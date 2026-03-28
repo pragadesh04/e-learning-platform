@@ -4,7 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
-    pythonVersion: "3.14"
+    pythonVersion: "3.13"
     envVars:
       - key: MONGODB_URI
         value: your_mongodb_connection_string
