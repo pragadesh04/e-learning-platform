@@ -4,6 +4,11 @@ python-telegram-bot==21.5
 # MongoDB
 motor==3.6.0
 
+# Authentication
+bcrypt==4.2.1
+python-jose[cryptography]==3.3.0
+PyJWT
+
 # AI / LangChain + Mistral
 langchain>=0.3.0
 langchain-mistralai>=0.2.0

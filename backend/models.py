@@ -1,6 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+
+
+class VideoItem(BaseModel):
+    video_url: str
+    title: str
+    thumbnail_url: str
 
 
 class CourseBase(BaseModel):
@@ -14,6 +20,8 @@ class CourseBase(BaseModel):
     sessions: Optional[int] = None
     duration: Optional[float] = None
     registration_open: bool = True
+    video_type: str = "none"
+    videos: List[VideoItem] = []
 
 
 class CourseCreate(CourseBase):
@@ -31,6 +39,8 @@ class CourseUpdate(BaseModel):
     sessions: Optional[int] = None
     duration: Optional[float] = None
     registration_open: Optional[bool] = None
+    video_type: Optional[str] = None
+    videos: Optional[List[VideoItem]] = None
 
 
 class CourseResponse(CourseBase):
@@ -72,3 +82,33 @@ class StatsResponse(BaseModel):
 
 class ConfigUpdate(BaseModel):
     value: str
+
+
+class UserCreate(BaseModel):
+    mobile: str
+    password: str
+    name: str
+    is_admin: bool = False
+
+
+class UserResponse(BaseModel):
+    id: str
+    mobile: str
+    name: str
+    is_admin: bool
+    accessible_courses: List[str] = []
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    mobile: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse

@@ -7,6 +7,20 @@ export interface Course {
   registration_count: number
   created_at: string
   updated_at: string
+  course_type: string
+  start_date?: string
+  start_time?: string
+  sessions?: number
+  duration?: number
+  registration_open: boolean
+  video_type: string
+  videos: Video[]
+}
+
+export interface Video {
+  video_url: string
+  title: string
+  thumbnail_url: string
 }
 
 export interface Registration {
@@ -32,4 +46,19 @@ export interface Stats {
 
 export interface Config {
   upi_id: string
+}
+
+export interface User {
+  id: string
+  mobile: string
+  name: string
+  is_admin: boolean
+  accessible_courses: string[]
+  created_at?: string
+}
+
+export interface LoginResponse {
+  access_token: string
+  token_type: string
+  user: User
 }

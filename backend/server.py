@@ -5,9 +5,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-
 from database import (
     connect_to_mongo,
     close_mongo_connection,
@@ -15,16 +13,9 @@ from database import (
     initialize_admin_user,
 )
 from routers import admin_router, webhooks_router, auth_router
-
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
-logger = logging.getLogger(__name__)
-logger.info("logging successfull")
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
@@ -36,13 +27,7 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 
-app = FastAPI(
-    title="Course Registration Bot API",
-    description="Backend API for Telegram bot and Admin Dashboard",
-    version="1.0.0",
-    lifespan=lifespan,
-)
-
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,10 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-if os.path.exists(upload_dir):
-    app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 app.include_router(admin_router)
 app.include_router(webhooks_router)
@@ -68,3 +49,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

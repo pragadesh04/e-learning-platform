@@ -5,7 +5,7 @@ import os
 import logging
 import json
 
-env_path = os.path.join(os.path.dirname(__file__), ".env")
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(env_path)
 
 logger = logging.getLogger(__name__)
@@ -14,30 +14,37 @@ logger = logging.getLogger(__name__)
 class MongoDB:
     client: AsyncIOMotorClient = None
     db: Database = None
+    connected: bool = False
 
 
 db_instance = MongoDB()
 
 
 async def connect_to_mongo():
+    if db_instance.connected:
+        return
     mongo_uri = os.getenv("MONGODB_URI")
     db_instance.client = AsyncIOMotorClient(mongo_uri)
     db_instance.db = db_instance.client["CourseBots"]
-    print("Connected to MongoDB")
+    db_instance.connected = True
+    print("Connected to MongoDB", flush=True)
 
 
 async def close_mongo_connection():
     if db_instance.client:
         db_instance.client.close()
-        print("MongoDB connection closed")
+        db_instance.connected = False
+        print("MongoDB connection closed", flush=True)
 
 
-def get_database() -> Database:
+async def get_database() -> Database:
+    if not db_instance.connected:
+        await connect_to_mongo()
     return db_instance.db
 
 
 async def get_courses():
-    db = get_database()
+    db = await get_database()
     courses = []
     cursor = db.courses.find().sort("registration_count", -1)
     async for course in cursor:
@@ -48,7 +55,7 @@ async def get_courses():
 
 
 async def get_course_by_id(course_id: str):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
 
     course = await db.courses.find_one({"_id": ObjectId(course_id)})
@@ -59,7 +66,7 @@ async def get_course_by_id(course_id: str):
 
 
 async def create_course(course_data: dict):
-    db = get_database()
+    db = await get_database()
     from datetime import datetime
 
     course_data["registration_count"] = 0
@@ -70,7 +77,7 @@ async def create_course(course_data: dict):
 
 
 async def update_course(course_id: str, update_data: dict):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
     from datetime import datetime
 
@@ -79,14 +86,14 @@ async def update_course(course_id: str, update_data: dict):
 
 
 async def delete_course(course_id: str):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
 
     await db.courses.delete_one({"_id": ObjectId(course_id)})
 
 
 async def increment_course_count(course_id: str):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
 
     await db.courses.update_one(
@@ -97,7 +104,7 @@ async def increment_course_count(course_id: str):
 async def get_registrations(
     status: str = None, course: str = None, sort_by: str = None, order: str = "desc"
 ):
-    db = get_database()
+    db = await get_database()
     registrations = []
     query = {}
     if status:
@@ -128,7 +135,7 @@ async def get_registrations(
 
 
 async def get_registration_by_id(reg_id: str):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
 
     reg = await db.registrations.find_one({"_id": ObjectId(reg_id)})
@@ -142,7 +149,7 @@ async def get_registration_by_id(reg_id: str):
 async def update_registration_status(
     reg_id: str, status: str, rejection_reason: str = None
 ):
-    db = get_database()
+    db = await get_database()
     from bson import ObjectId
     from datetime import datetime
 
@@ -157,13 +164,13 @@ async def update_registration_status(
 
 
 async def get_config(key: str):
-    db = get_database()
+    db = await get_database()
     config = await db.config.find_one({"key": key})
     return config["value"] if config else None
 
 
 async def set_config(key: str, value: str):
-    db = get_database()
+    db = await get_database()
     from datetime import datetime
 
     await db.config.update_one(
@@ -174,7 +181,7 @@ async def set_config(key: str, value: str):
 
 
 async def get_stats():
-    db = get_database()
+    db = await get_database()
     total = await db.registrations.count_documents({})
     pending = await db.registrations.count_documents({"status": "pending"})
     approved = await db.registrations.count_documents({"status": "approved"})
@@ -188,7 +195,7 @@ async def get_stats():
 
 
 async def initialize_default_config():
-    db = get_database()
+    db = await get_database()
     existing = await db.config.find_one({"key": "upi_id"})
     if not existing:
         await set_config("upi_id", "yourname@upi")
@@ -208,3 +215,87 @@ async def initialize_default_config():
                 "updated_at": datetime.utcnow(),
             }
         )
+
+
+async def create_user(user_data: dict):
+    db = await get_database()
+    from datetime import datetime
+    from bson import ObjectId
+
+    user_data["accessible_courses"] = user_data.get("accessible_courses", [])
+    user_data["created_at"] = datetime.utcnow()
+    user_data["_id"] = ObjectId()
+    result = await db.users.insert_one(user_data)
+    user_data["id"] = str(result.inserted_id)
+    user_data["_id"] = str(user_data["_id"])
+    return user_data
+
+
+async def get_user_by_mobile(mobile: str):
+    db = await get_database()
+    user = await db.users.find_one({"mobile": mobile})
+    if user:
+        user["id"] = str(user["_id"])
+        user.pop("_id", None)
+    return user
+
+
+async def get_user_by_id(user_id: str):
+    db = await get_database()
+    from bson import ObjectId
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if user:
+        user["id"] = str(user["_id"])
+        user.pop("_id", None)
+    return user
+
+
+async def add_course_access(user_id: str, course_id: str):
+    db = await get_database()
+    from bson import ObjectId
+
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)}, {"$addToSet": {"accessible_courses": course_id}}
+    )
+
+
+async def get_user_courses(user_id: str):
+    db = await get_database()
+    from bson import ObjectId
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return []
+
+    course_ids = user.get("accessible_courses", [])
+    courses = []
+    for course_id in course_ids:
+        course = await get_course_by_id(course_id)
+        if course:
+            courses.append(course)
+    return courses
+
+
+async def initialize_admin_user():
+    db = await get_database()
+    from datetime import datetime
+
+    existing_admin = await db.users.find_one({"mobile": "5555511111"})
+    if existing_admin:
+        return
+
+    import bcrypt
+
+    hashed = bcrypt.hashpw("Admin@123".encode("utf-8"), bcrypt.gensalt())
+    await db.users.insert_one(
+        {
+            "mobile": "5555511111",
+            "password_hash": hashed.decode("utf-8"),
+            "name": "Admin",
+            "is_admin": True,
+            "accessible_courses": [],
+            "created_at": datetime.utcnow(),
+        }
+    )
+    print("Admin user created: Mobile=5555511111, Password=Admin@123", flush=True)

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, Video, PlayCircle, X } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'
@@ -17,12 +17,42 @@ const formatHours = (hours: number): string => {
 export const Courses: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<any>(null)
+  const [sortBy, setSortBy] = useState<string>('popular')
+  const [sortOrder, setSortOrder] = useState<string>('desc')
   const queryClient = useQueryClient()
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ['courses'],
     queryFn: api.getCourses,
   })
+
+  const sortedCourses = useMemo(() => {
+    if (!courses) return []
+    
+    const coursesCopy = [...courses]
+    
+    return coursesCopy.sort((a, b) => {
+      let comparison = 0
+      
+      switch (sortBy) {
+        case 'popular':
+          comparison = (a.registration_count || 0) - (b.registration_count || 0)
+          break
+        case 'price':
+          comparison = (a.fee || 0) - (b.fee || 0)
+          break
+        case 'date':
+          const dateA = new Date(a.created_at || 0).getTime()
+          const dateB = new Date(b.created_at || 0).getTime()
+          comparison = dateA - dateB
+          break
+        default:
+          comparison = 0
+      }
+      
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+  }, [courses, sortBy, sortOrder])
 
   const createMutation = useMutation({
     mutationFn: api.createCourse,
@@ -78,16 +108,38 @@ export const Courses: React.FC = () => {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold dark:text-white">Courses</h1>
-        <button
-          onClick={() => {
-            setEditingCourse(null)
-            setIsModalOpen(true)
-          }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Course
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <SortAsc className="w-4 h-4 text-gray-500" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="input-field w-auto"
+            >
+              <option value="popular">Most Popular</option>
+              <option value="price">Price</option>
+              <option value="date">Date Created</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="input-field w-auto"
+            >
+              <option value="desc">High to Low</option>
+              <option value="asc">Low to High</option>
+            </select>
+          </div>
+          <button
+            onClick={() => {
+              setEditingCourse(null)
+              setIsModalOpen(true)
+            }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Course
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -98,7 +150,7 @@ export const Courses: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses?.map((course: any) => (
+          {sortedCourses?.map((course: any) => (
             <GlassCard key={course._id} hover className="overflow-hidden">
               <div className="relative">
                 <img
@@ -222,6 +274,9 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
   const [startTime, setStartTime] = useState(course?.start_time || '')
   const [sessions, setSessions] = useState(course?.sessions?.toString() || '')
   const [duration, setDuration] = useState(course?.duration?.toString() || '')
+  const [videoType, setVideoType] = useState(course?.video_type || 'none')
+  const [videoUrls, setVideoUrls] = useState<string[]>(course?.videos?.map((v: any) => v.video_url) || [''])
+  const [fetchingVideos, setFetchingVideos] = useState(false)
 
   useEffect(() => {
     setTitle(course?.title || '')
@@ -233,10 +288,56 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
     setStartTime(course?.start_time || '')
     setSessions(course?.sessions?.toString() || '')
     setDuration(course?.duration?.toString() || '')
+    setVideoType(course?.video_type || 'none')
+    setVideoUrls(course?.videos?.map((v: any) => v.video_url) || [''])
   }, [course])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const addVideoUrl = () => {
+    setVideoUrls([...videoUrls, ''])
+  }
+
+  const removeVideoUrl = (index: number) => {
+    setVideoUrls(videoUrls.filter((_, i) => i !== index))
+  }
+
+  const updateVideoUrl = (index: number, value: string) => {
+    const updated = [...videoUrls]
+    updated[index] = value
+    setVideoUrls(updated)
+  }
+
+  const fetchVideoInfo = async () => {
+    const urls = videoUrls.filter(url => url.trim() !== '')
+    if (urls.length === 0) return
+    
+    setFetchingVideos(true)
+    try {
+      const res = await fetch('/api/courses/video-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(urls),
+      })
+      const videos = await res.json()
+      return videos
+    } catch (error) {
+      console.error('Error fetching video info:', error)
+      return urls.map((url: string) => ({ video_url: url, title: 'Unknown', thumbnail_url: '' }))
+    } finally {
+      setFetchingVideos(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    let videos: any[] = []
+    if (videoType === 'video') {
+      const urls = videoUrls.filter(url => url.trim() !== '')
+      if (urls.length > 0) {
+        videos = await fetchVideoInfo()
+      }
+    }
+
     onSubmit({
       title,
       description,
@@ -247,6 +348,8 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
       start_time: courseType === 'live' ? startTime || undefined : undefined,
       sessions: courseType === 'live' && sessions ? parseInt(sessions) : undefined,
       duration: courseType === 'live' && duration ? parseFloat(duration) : undefined,
+      video_type: videoType,
+      videos: videos.length > 0 ? videos : undefined,
     })
   }
 
@@ -384,6 +487,71 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
             Leave empty to use auto-generated placeholder
           </p>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Video Content
+          </label>
+          <select
+            value={videoType}
+            onChange={(e) => {
+              setVideoType(e.target.value)
+              if (e.target.value === 'video') {
+                setVideoUrls([''])
+              } else {
+                setVideoUrls([])
+              }
+            }}
+            className="input-field"
+          >
+            <option value="none">No Video</option>
+            <option value="video">Video Links</option>
+          </select>
+        </div>
+
+        {videoType === 'video' && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Video URLs
+              </label>
+              <button
+                type="button"
+                onClick={addVideoUrl}
+                className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+              >
+                <Plus className="w-4 h-4" />
+                Add Video
+              </button>
+            </div>
+            {videoUrls.map((url, index) => (
+              <div key={index} className="flex gap-2">
+                <div className="relative flex-1">
+                  <PlayCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => updateVideoUrl(index, e.target.value)}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="input-field pl-10"
+                  />
+                </div>
+                {videoUrls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeVideoUrl(index)}
+                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {fetchingVideos && (
+              <p className="text-sm text-gray-500">Fetching video information...</p>
+            )}
+          </div>
+        )}
         
         <div className="flex gap-3 pt-4">
           <button type="button" onClick={onClose} className="flex-1 btn-secondary">
