@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { ArrowLeft, Play, Pause, Menu, X } from 'lucide-react'
+import { ArrowLeft, Play, Pause } from 'lucide-react'
 
 function extractVideoId(url: string): string {
   const patterns = [
@@ -20,8 +20,17 @@ export const VideoPlayer: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
 
   const { data: videos, isLoading, error } = useQuery({
     queryKey: ['courseVideos', courseId],
@@ -57,12 +66,12 @@ export const VideoPlayer: React.FC = () => {
 
   if (error || !videos || videos.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center">
           <h2 className="text-xl text-white mb-4">No videos available</h2>
           <button
             onClick={() => navigate('/')}
-            className="btn-primary"
+            className="px-6 py-3 bg-primary text-white rounded-lg font-medium"
           >
             Go Back
           </button>
@@ -74,57 +83,75 @@ export const VideoPlayer: React.FC = () => {
   const currentVideo = videos[currentVideoIndex]
   const videoId = extractVideoId(currentVideo.video_url)
 
+  const handleNextVideo = () => {
+    if (currentVideoIndex < videos.length - 1) {
+      setCurrentVideoIndex(currentVideoIndex + 1)
+    }
+  }
+
+  const handlePrevVideo = () => {
+    if (currentVideoIndex > 0) {
+      setCurrentVideoIndex(currentVideoIndex - 1)
+    }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return
+    const diff = touchStart - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) handleNextVideo()
+      else handlePrevVideo()
+    }
+    setTouchStart(null)
+  }
+
   return (
-    <div className="min-h-screen bg-black flex flex-col lg:flex-row">
-      <div className="flex-1 flex flex-col">
-        <div className="p-2 md:p-4 flex items-center justify-between">
+    <div 
+      className="min-h-screen bg-black flex flex-col lg:flex-row"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Video Player */}
+      <div className="flex-1 relative bg-black">
+        <iframe
+          ref={iframeRef}
+          key={videoId}
+          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&showinfo=0&cc_load_policy=0&controls=1&fs=1&playlist=${videoId}`}
+          title={currentVideo.title}
+          className="absolute inset-0 w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          style={{ border: 'none' }}
+        />
+      </div>
+
+      {/* Video List Sidebar - Right */}
+      <div className={`w-full lg:w-80 bg-gray-900 border-l border-gray-800 flex flex-col ${isFullscreen ? 'hidden' : ''}`}>
+        {/* Back Button */}
+        <div className="p-3 border-b border-gray-800">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-white hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-white hover:text-primary transition-colors"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <span>Back</span>
           </button>
         </div>
 
-        <div className="flex-1 relative bg-black">
-          <iframe
-            ref={iframeRef}
-            key={videoId}
-            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&showinfo=0&cc_load_policy=0&controls=1&fs=0&playlist=${videoId}`}
-            title={currentVideo.title}
-            className="absolute inset-0 w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            style={{ border: 'none' }}
-          />
-        </div>
-
-        <div className="p-4 bg-gray-900">
-          <h2 className="text-white text-lg font-semibold">{currentVideo.title}</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Video {currentVideoIndex + 1} of {videos.length}
-          </p>
-        </div>
-      </div>
-
-      <div className={`w-full lg:w-80 bg-gray-900 border-l border-gray-800 overflow-y-auto max-h-[40vh] lg:max-h-screen transition-all ${sidebarOpen ? 'h-auto' : 'h-0 lg:h-auto lg:overflow-hidden'}`}>
-        <div className="p-2 md:p-4">
-          <h3 className="text-white font-semibold mb-3 hidden lg:block">Course Videos</h3>
-          <div className="space-y-2 overflow-y-auto max-h-[35vh] lg:max-h-[calc(100vh-120px)]">
+        {/* Video List */}
+        <div className="flex-1 overflow-y-auto p-3">
+          <div className="space-y-2">
             {videos.map((video: any, index: number) => (
               <button
                 key={index}
                 onClick={() => setCurrentVideoIndex(index)}
-                className={`w-full flex items-start gap-2 md:gap-3 p-1 md:p-2 rounded-lg text-left transition-colors ${
-                  index === currentVideoIndex
-                    ? 'bg-primary/20 border border-primary'
+                className={`w-full flex items-start gap-3 p-2 rounded-lg text-left transition-colors ${
+                  index === currentVideoIndex 
+                    ? 'bg-primary/20 border border-primary' 
                     : 'hover:bg-gray-800 border border-transparent'
                 }`}
               >
@@ -132,18 +159,21 @@ export const VideoPlayer: React.FC = () => {
                   <img
                     src={video.thumbnail_url || `https://img.youtube.com/vi/${extractVideoId(video.video_url)}/mqdefault.jpg`}
                     alt={video.title}
-                    className="w-20 md:w-24 h-12 md:h-14 object-cover rounded"
+                    className="w-24 h-14 object-cover rounded"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
                     {index === currentVideoIndex ? (
-                      <Pause className="w-4 md:w-6 h-4 md:h-6 text-white" />
+                      <Pause className="w-5 h-5 text-white" />
                     ) : (
-                      <Play className="w-4 md:w-6 h-4 md:h-6 text-white" />
+                      <Play className="w-5 h-5 text-white" />
                     )}
+                  </div>
+                  <div className="absolute bottom-1 right-1 px-1 bg-black/70 text-white text-xs rounded">
+                    {index + 1}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs md:text-sm line-clamp-2">{video.title}</p>
+                  <p className="text-white text-sm line-clamp-2">{video.title}</p>
                 </div>
               </button>
             ))}

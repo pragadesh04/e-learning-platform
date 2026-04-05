@@ -94,6 +94,7 @@ export const Courses: React.FC = () => {
   })
 
   const handleEdit = (course: any) => {
+    console.log(course)
     setEditingCourse(course)
     setIsModalOpen(true)
   }
@@ -245,7 +246,7 @@ export const Courses: React.FC = () => {
         course={editingCourse}
         onSubmit={(data) => {
           if (editingCourse) {
-            updateMutation.mutate({ id: editingCourse._id, data })
+            updateMutation.mutate({ id: editingCourse.id, data })
           } else {
             createMutation.mutate(data)
           }

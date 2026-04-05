@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     
     mistral_api_key: str = ""
     
+    # Cloudinary Storage
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+    
     admin_chat_id: str = ""
     
     @property

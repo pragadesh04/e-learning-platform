@@ -5,8 +5,6 @@ import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'
 
-const API_BASE = 'http://localhost:8000'
-
 const REJECTION_REASONS = [
     'Fake screenshot',
     'Registration closed',
@@ -297,8 +295,20 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     }
 
     const imageUrl = registration.screenshot_url 
-        ? `${API_BASE}${registration.screenshot_url}`
+        ? registration.screenshot_url
         : null
+
+    // Check if screenshot is expired (older than 30 days)
+    const isScreenshotExpired = () => {
+        if (registration.screenshot_expired) return true
+        if (!registration.screenshot_uploaded_at) return false
+        const uploadDate = new Date(registration.screenshot_uploaded_at)
+        const now = new Date()
+        const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24)
+        return daysDiff > 30
+    }
+
+    const screenshotExpired = isScreenshotExpired()
 
     return (
         <GlassModal isOpen={!!registration} onClose={onClose} title="Registration Details">
@@ -311,7 +321,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
                     <div>
                         <h3 className="text-xl font-semibold dark:text-white">{registration.name}</h3>
-                        <p className="text-gray-500 dark:text-gray-400">Telegram ID: {registration.telegram_id}</p>
+                        <p className="text-gray-500 dark:text-gray-400">Telegram ID: {registration.telegram_id || 'N/A'}</p>
                     </div>
                 </div>
 
@@ -345,11 +355,18 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 {imageUrl && (
                     <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Payment Screenshot</p>
-                        <img
-                            src={imageUrl}
-                            alt="Payment screenshot"
-                            className="w-full rounded-xl object-contain max-h-64 bg-gray-100 dark:bg-gray-800"
-                        />
+                        {screenshotExpired ? (
+                            <div className="w-full h-48 rounded-xl bg-gray-200 dark:bg-gray-700 flex flex-col items-center justify-center">
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">Screenshot Expired</span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">Auto-deleted after 30 days</span>
+                            </div>
+                        ) : (
+                            <img
+                                src={imageUrl}
+                                alt="Payment screenshot"
+                                className="w-full rounded-xl object-contain max-h-64 bg-gray-100 dark:bg-gray-800"
+                            />
+                        )}
                     </div>
                 )}
 

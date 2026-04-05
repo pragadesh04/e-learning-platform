@@ -1,10 +1,10 @@
 import sys
 import os
+import io
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
-import shutil
 import logging
 from datetime import datetime
 
@@ -14,9 +14,6 @@ from routers.auth import get_current_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/web", tags=["web-registrations"])
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "screenshots", "web")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @router.get("")
@@ -67,16 +64,21 @@ async def create_registration(
         if reg.get("course_id") == course_id and reg.get("status") in ["pending", "approved"]:
             raise HTTPException(status_code=400, detail="Already registered for this course")
     
-    # Save screenshot
-    screenshot_filename = None
-    if screenshot:
-        ext = screenshot.filename.split('.')[-1] if '.' in screenshot.filename else 'jpg'
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        screenshot_filename = f"{user_id}_{course_id}_{timestamp}.{ext}"
-        screenshot_path = os.path.join(UPLOAD_DIR, screenshot_filename)
-        
-        with open(screenshot_path, "wb") as buffer:
-            shutil.copyfileobj(screenshot.file, buffer)
+    # Upload screenshot to Cloudinary
+    screenshot_url = None
+    screenshot_public_id = None
+    screenshot_uploaded_at = None
+    
+    try:
+        from utils.cloud_upload import upload_screenshot
+        upload_result = upload_screenshot(screenshot.file)
+        screenshot_url = upload_result["url"]
+        screenshot_public_id = upload_result["public_id"]
+        screenshot_uploaded_at = upload_result["uploaded_at"]
+    except Exception as e:
+        logger.error(f"Cloudinary upload failed: {e}")
+        # If Cloudinary fails, we can still proceed without screenshot URL
+        # But you might want to raise an error instead
     
     registration_data = {
         "user_id": user_id,
@@ -86,7 +88,10 @@ async def create_registration(
         "course_id": course_id,
         "course_title": course.get("title"),
         "amount": course.get("fee", 0),
-        "screenshot_url": f"/uploads/screenshots/web/{screenshot_filename}" if screenshot_filename else None,
+        "screenshot_url": screenshot_url,
+        "screenshot_public_id": screenshot_public_id,
+        "screenshot_uploaded_at": screenshot_uploaded_at,
+        "screenshot_expired": False,
         "status": "pending",
         "source": "web"
     }

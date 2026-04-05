@@ -48,7 +48,7 @@ export const UserDashboard: React.FC = () => {
 
   const handleCourseClick = (courseId: string) => {
     navigate(`/course/${courseId}`)
-    setSidebarOpen(false)
+    // Don't auto-close sidebar - user can close manually
   }
 
   const handleLogout = () => {
@@ -463,7 +463,7 @@ export const UserDashboard: React.FC = () => {
             >
               {sidebarOpen ? <X className="w-6 h-6 dark:text-white" /> : <Menu className="w-6 h-6 dark:text-white" />}
             </button>
-            <h1 className="text-xl font-bold text-red-600">CourseHub</h1>
+            <h1 className="text-3xl font-bold text-red-600">Trinity</h1>
           </div>
 
           <div className="flex-1 max-w-xl mx-4 hidden md:block">
@@ -509,31 +509,31 @@ export const UserDashboard: React.FC = () => {
 
       <div className="flex flex-1">
         {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 top-16 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:top-0 md:h-auto md:min-h-[calc(100vh-64px)] md:flex md:flex-col`}>
+        <aside className={`fixed inset-y-0 left-0 top-16 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:top-0 md:h-auto md:min-h-[calc(100vh-64px)] md:flex md:flex-col md:translate-x-0`}>
           <nav className="p-4 space-y-2 flex-1 flex flex-col">
             <button
-              onClick={() => { setActiveTab('home'); setSidebarOpen(false); }}
+              onClick={() => setActiveTab('home')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'home' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Home className="w-5 h-5" />
               <span>Home</span>
             </button>
             <button
-              onClick={() => { setActiveTab('courses'); setSidebarOpen(false); }}
+              onClick={() => setActiveTab('courses')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'courses' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Compass className="w-5 h-5" />
               <span>Browse Courses</span>
             </button>
             <button
-              onClick={() => { setActiveTab('mycourses'); setSidebarOpen(false); }}
+              onClick={() => setActiveTab('mycourses')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'mycourses' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Video className="w-5 h-5" />
               <span>My Courses</span>
             </button>
             <button
-              onClick={() => { setActiveTab('registrations'); setSidebarOpen(false); }}
+              onClick={() => setActiveTab('registrations')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'registrations' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <FileText className="w-5 h-5" />
@@ -551,7 +551,7 @@ export const UserDashboard: React.FC = () => {
           </nav>
         </aside>
 
-        {/* Overlay */}
+        {/* Overlay - only for clicking outside to close */}
         {sidebarOpen && (
           <div 
             className="fixed inset-0 z-30 bg-black/50 md:hidden top-16"
