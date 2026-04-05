@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from database import add_chat_message, get_chat_history, clear_chat_history
-from ai import get_ai_response_stream
+from bot.database import add_chat_message, get_chat_history, clear_chat_history
+from bot.ai import get_ai_response_stream
 
 
 def is_follow_up(user_message: str, last_user_message: str) -> bool:

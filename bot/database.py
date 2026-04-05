@@ -1,8 +1,14 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.database import Database
 from dotenv import load_dotenv
-import os
 import logging
+
+from settings import settings
 
 load_dotenv()
 
@@ -18,9 +24,9 @@ db_instance = MongoDB()
 
 
 async def connect_to_mongo():
-    db_instance.client = AsyncIOMotorClient(os.getenv("MONGODB_URI"))
-    db_instance.db = db_instance.client.get_default_database()
-    print("Connected to MongoDB")
+    db_instance.client = AsyncIOMotorClient(settings.mongodb_uri)
+    db_instance.db = db_instance.client[settings.mongodb_name]
+    print(f"Connected to MongoDB - Database: {settings.mongodb_name}")
 
 
 async def close_mongo_connection():
@@ -174,14 +180,70 @@ async def create_registration(reg_data: dict):
     return str(result.inserted_id)
 
 
-async def update_registration_status(reg_id: str, status: str):
+async def update_registration_status(reg_id: str, status: str, rejection_reason: str = None):
     db = get_database()
     from bson import ObjectId
     from datetime import datetime
 
+    update_data = {"status": status, "updated_at": datetime.utcnow()}
+    if rejection_reason:
+        update_data["rejection_reason"] = rejection_reason
+
     await db.registrations.update_one(
         {"_id": ObjectId(reg_id)},
-        {"$set": {"status": status, "updated_at": datetime.utcnow()}},
+        {"$set": update_data},
+    )
+
+
+async def get_registration_by_id(reg_id: str):
+    db = get_database()
+    from bson import ObjectId
+
+    reg = await db.registrations.find_one({"_id": ObjectId(reg_id)})
+    if reg:
+        reg["_id"] = str(reg["_id"])
+        reg["course_id"] = str(reg["course_id"]) if reg.get("course_id") else None
+    return reg
+
+
+async def increment_course_count(course_id: str):
+    db = get_database()
+    from bson import ObjectId
+
+    await db.courses.update_one(
+        {"_id": ObjectId(course_id)}, {"$inc": {"registration_count": 1}}
+    )
+
+
+async def create_user(user_data: dict):
+    db = get_database()
+    from datetime import datetime
+    from bson import ObjectId
+
+    user_data["accessible_courses"] = user_data.get("accessible_courses", [])
+    user_data["created_at"] = datetime.utcnow()
+    user_data["_id"] = ObjectId()
+    result = await db.users.insert_one(user_data)
+    user_data["id"] = str(result.inserted_id)
+    user_data["_id"] = str(user_data["_id"])
+    return user_data
+
+
+async def get_user_by_mobile(mobile: str):
+    db = get_database()
+    user = await db.users.find_one({"mobile": mobile})
+    if user:
+        user["id"] = str(user["_id"])
+        user.pop("_id", None)
+    return user
+
+
+async def add_course_access(user_id: str, course_id: str):
+    db = get_database()
+    from bson import ObjectId
+
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)}, {"$addToSet": {"accessible_courses": course_id}}
     )
 
 

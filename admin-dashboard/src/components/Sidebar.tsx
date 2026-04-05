@@ -3,10 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, BookOpen, Users, Settings, LogOut } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { useThemeStore } from '../store/themeStore'
 
 export const Sidebar: React.FC = () => {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const { isDark } = useThemeStore()
   
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -23,9 +25,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 h-screen glass border-r border-primary/10 sticky top-0 flex flex-col">
       <div className="p-6">
-        <h1 className="text-2xl font-bold dark:text-white">
-          Admin<span className="text-primary">Panel</span>
-        </h1>
+        <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-10 mb-2" />
         {user && (
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {user.name}

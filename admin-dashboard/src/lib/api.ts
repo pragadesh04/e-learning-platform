@@ -2,7 +2,7 @@ const API_BASE = '/api'
 
 const getToken = () => localStorage.getItem('token')
 
-const fetchWithAuth = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+const fetchWithAuth = async (url: string, options: RequestInit = {}, timeout = 30000) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
   const token = getToken()
@@ -17,18 +17,28 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}, timeout = 1
   try {
     const res = await fetch(url, { ...options, signal: controller.signal, headers })
     return res
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out')
+    }
+    throw error
   } finally {
     clearTimeout(timeoutId)
   }
 }
 
-const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 30000) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
   
   try {
     const res = await fetch(url, { ...options, signal: controller.signal })
     return res
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out')
+    }
+    throw error
   } finally {
     clearTimeout(timeoutId)
   }

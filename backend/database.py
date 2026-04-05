@@ -1,12 +1,17 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.database import Database
 from dotenv import load_dotenv
-import os
 import logging
-import json
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(env_path)
+
+from settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +28,10 @@ db_instance = MongoDB()
 async def connect_to_mongo():
     if db_instance.connected:
         return
-    mongo_uri = os.getenv("MONGODB_URI")
-    db_instance.client = AsyncIOMotorClient(mongo_uri)
-    db_instance.db = db_instance.client["CourseBots"]
+    db_instance.client = AsyncIOMotorClient(settings.mongodb_uri)
+    db_instance.db = db_instance.client[settings.mongodb_name]
     db_instance.connected = True
-    print("Connected to MongoDB", flush=True)
+    print(f"Connected to MongoDB - Database: {settings.mongodb_name}", flush=True)
 
 
 async def close_mongo_connection():
@@ -142,7 +146,13 @@ async def get_registration_by_id(reg_id: str):
     if reg:
         reg["id"] = str(reg["_id"])
         reg.pop("_id", None)
-        reg["course_id"] = str(reg["course_id"]) if reg.get("course_id") else None
+        # Convert course_id to string if it's an ObjectId
+        if reg.get("course_id"):
+            reg["course_id"] = str(reg["course_id"])
+        # Convert any other potential ObjectId fields
+        for key, value in reg.items():
+            if hasattr(value, '__class__') and 'ObjectId' in str(type(value)):
+                reg[key] = str(value)
     return reg
 
 

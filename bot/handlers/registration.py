@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from database import (
+from bot.database import (
     get_courses,
     get_course_by_id,
     get_latest_user_info,
@@ -60,7 +60,7 @@ async def register_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"📝 *Registration Started!*\n\n"
                 f"We found your previous registration details:\n"
                 f"• Name: *{existing_info['name']}*\n"
-                f"• Address: *{existing_info['address']}*"
+                f"• Address: *{existing_info['address']}*\n"
                 f"{mobile_text}\n\n"
                 f"Would you like to use the same details?"
             ),
@@ -98,7 +98,7 @@ async def use_same_details_callback(update: Update, context: ContextTypes.DEFAUL
         context.user_data["use_same_details"] = True
         context.user_data["registration_step"] = "course"
 
-        details_text = f"✅ *Using same details:*\n• Name: *{existing_info['name']}*\n• Address: *{existing_info['address']}*"
+        details_text = f"✅ *Using same details:*\n• Name: *{existing_info['name']}*\n• Address: *{existing_info['address']}*\n"
         if existing_info.get("mobile"):
             details_text += f"\n• Mobile: *{existing_info['mobile']}*"
 
@@ -283,11 +283,14 @@ async def handle_course_selection(
         if 0 <= index < len(courses):
             course = courses[index]
             context.user_data["selected_course"] = course
-            context.user_data["registration_step"] = "payment"
-
-            from handlers.payment import start_payment_flow
-
-            await start_payment_flow(update, context)
+            
+            course_type = course.get("course_type", "recorded")
+            if course_type == "live":
+                await show_live_course_timing(update, course, context)
+            else:
+                context.user_data["registration_step"] = "payment"
+                from handlers.payment import start_payment_flow
+                await start_payment_flow(update, context)
             return True
         else:
             if update.callback_query:
@@ -307,6 +310,39 @@ async def handle_course_selection(
         return True
 
 
+async def show_live_course_timing(update, course, context):
+    """Show live course timing info and proceed to payment"""
+    course_type = course.get("course_type", "recorded")
+    
+    timing_text = ""
+    if course_type == "live":
+        if course.get("start_date"):
+            timing_text = f"\n\n📅 *Class Schedule:*\n   📅 Date: {course['start_date']}"
+            if course.get("start_time"):
+                timing_text += f"\n   ⏰ Time: {course['start_time']}"
+            if course.get("sessions"):
+                timing_text += f"\n   📊 Sessions: {course['sessions']}"
+            if course.get("duration"):
+                timing_text += f"\n   ⏱️ Duration: {format_duration_hours(course['duration'])} per session"
+    
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    keyboard = [
+        [InlineKeyboardButton("💳 Proceed to Payment", callback_data="proceed_payment")],
+        [InlineKeyboardButton("❌ Cancel", callback_data="cancel_registration")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    message = f"✅ *Course Selected:* {course['title']}\n\n💰 *Fee:* ₹{course.get('fee', 0)}{timing_text}\n\nClick below to proceed with payment."
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(message, parse_mode="Markdown", reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(message, parse_mode="Markdown", reply_markup=reply_markup)
+    
+    return True
+
+
 async def course_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle course selection via inline button"""
     query = update.callback_query
@@ -322,15 +358,39 @@ async def course_select_callback(update: Update, context: ContextTypes.DEFAULT_T
         context.user_data["registration_step"] = "course"
         await show_course_selection(update, context)
         return
+    
+    if data == "proceed_payment":
+        course = context.user_data.get("selected_course")
+        if course:
+            from handlers.payment import start_payment_flow
+            await start_payment_flow(update, context)
+        return
+    
+    if data == "cancel_registration":
+        context.user_data["in_registration"] = False
+        context.user_data["in_query_mode"] = False
+        context.user_data["registration_step"] = None
+        context.user_data["selected_course"] = None
+        
+        await query.edit_message_text(
+            "❌ *Registration Cancelled*\n\nType /register to start again.",
+            parse_mode="Markdown"
+        )
+        return
 
-    if data.startswith("course_select_"):
-        course_id = data.replace("course_select_", "")
+    if data.startswith("course_select_") or data.startswith("course_register_"):
+        course_id = data.replace("course_select_", "").replace("course_register_", "")
         course = await get_course_by_id(course_id)
 
         if course:
             context.user_data["selected_course"] = course
-            context.user_data["registration_step"] = "payment"
-
-            from handlers.payment import start_payment_flow
-
-            await start_payment_flow(update, context)
+            context.user_data["in_registration"] = True
+            context.user_data["in_query_mode"] = False
+            
+            course_type = course.get("course_type", "recorded")
+            if course_type == "live":
+                await show_live_course_timing(update, course, context)
+            else:
+                context.user_data["registration_step"] = "payment"
+                from handlers.payment import start_payment_flow
+                await start_payment_flow(update, context)

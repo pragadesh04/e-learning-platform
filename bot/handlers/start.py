@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from database import get_courses, get_registrations_by_telegram_id
+from bot.database import get_courses, get_course_by_id, get_registrations_by_telegram_id
 from datetime import datetime
 
 
@@ -60,7 +60,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def courses_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /courses command - show all courses with details"""
+    """Handle /courses command - show all courses with View Details buttons"""
     courses = await get_courses()
 
     if not courses:
@@ -97,7 +97,23 @@ async def courses_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         courses_text += f"   👥 {course.get('registration_count', 0)} enrolled\n\n"
 
-    await update.message.reply_text(courses_text, parse_mode="Markdown")
+    courses_text += "\n👇 *Tap a course below to view details and register:*"
+
+    keyboard = []
+    for course in courses:
+        fee = course.get('fee', 0)
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📖 {course['title']} - ₹{fee}",
+                callback_data=f"course_view_{course['_id']}"
+            )
+        ])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        courses_text, parse_mode="Markdown", reply_markup=reply_markup
+    )
 
 
 async def myregistrations_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -148,3 +164,97 @@ async def myregistrations_command(update: Update, context: ContextTypes.DEFAULT_
 
     result = "\n".join(lines)
     await update.message.reply_text(result, parse_mode="Markdown")
+
+
+async def course_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle course view callback - show course details with Proceed to Pay and Back buttons"""
+    query = update.callback_query
+    data = query.data
+
+    await query.answer()
+
+    if data.startswith("course_view_"):
+        course_id = data.replace("course_view_", "")
+        course = await get_course_by_id(course_id)
+
+        if not course:
+            await query.edit_message_text(
+                "❌ Course not found.", parse_mode="Markdown"
+            )
+            return
+
+        course_type = course.get("course_type", "recorded")
+        type_emoji = "🔴" if course_type == "live" else "📼"
+        type_text = "Live" if course_type == "live" else "Recorded"
+
+        fee = course.get('fee', 0)
+        description = course.get('description', 'No description available.')
+
+        course_details = (
+            f"{type_emoji} *{course['title']}*\n\n"
+            f"📝 *Description:*\n{description}\n\n"
+            f"💰 *Price:* ₹{fee}\n"
+            f"🎯 *Type:* {type_text}\n"
+        )
+
+        if course_type == "live":
+            if course.get("start_date"):
+                course_details += f"📅 *Start Date:* {course['start_date']}\n"
+            if course.get("start_time"):
+                course_details += f"⏰ *Time:* {course['start_time']}\n"
+            if course.get("sessions"):
+                course_details += f"📊 *Sessions:* {course['sessions']}\n"
+            if course.get("duration"):
+                course_details += f"⏱️ *Duration:* {format_duration_hours(course['duration'])} per session\n"
+        else:
+            if course.get("total_videos"):
+                course_details += f"🎬 *Total Videos:* {course['total_videos']}\n"
+            if course.get("duration"):
+                course_details += f"⏱️ *Total Duration:* {format_duration_hours(course['duration'])}\n"
+
+        course_details += f"\n👥 *Enrolled:* {course.get('registration_count', 0)} students"
+
+        keyboard = [
+            [InlineKeyboardButton("💳 Proceed to Pay", callback_data=f"course_register_{course_id}")],
+            [InlineKeyboardButton("🔙 Back to Courses", callback_data="back_to_courses")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            course_details,
+            parse_mode="Markdown",
+            reply_markup=reply_markup
+        )
+
+
+async def back_to_courses_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle back to courses callback"""
+    query = update.callback_query
+    await query.answer()
+
+    courses = await get_courses()
+
+    if not courses:
+        await query.edit_message_text(
+            "📚 No courses available yet.", parse_mode="Markdown"
+        )
+        return
+
+    courses_text = "📚 *Available Courses:*\n\n"
+    for i, course in enumerate(courses, 1):
+        courses_text += f"{i}. *{course['title']}* - ₹{course.get('fee', 0)}\n"
+    courses_text += "\n👇 *Tap a course below to view details and register:*"
+
+    keyboard = []
+    for course in courses:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📖 {course['title']} - ₹{course.get('fee', 0)}",
+                callback_data=f"course_view_{course['_id']}"
+            )
+        ])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        courses_text, parse_mode="Markdown", reply_markup=reply_markup
+    )

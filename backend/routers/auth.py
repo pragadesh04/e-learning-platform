@@ -12,13 +12,14 @@ from typing import Optional
 
 import database
 import models
+from settings import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-SECRET_KEY = os.getenv("ADMIN_WEBHOOK_SECRET", "your_secret_key_here")
+SECRET_KEY = settings.admin_webhook_secret
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 

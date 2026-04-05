@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from database import get_config, create_registration
-from utils import generate_qr_code
+from bot.database import get_config, create_registration
+from bot.utils import generate_qr_code, send_admin_notification
 from bson import ObjectId
 import os
 import tempfile
@@ -38,14 +38,19 @@ async def start_payment_flow(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"Please pay the above amount and send the screenshot."
     )
 
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="cancel_registration")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.callback_query:
         chat_id = update.callback_query.message.chat_id
         await update.callback_query.message.reply_text(
-            course_info, parse_mode="Markdown"
+            course_info, parse_mode="Markdown", reply_markup=reply_markup
         )
     else:
         chat_id = update.message.chat_id
-        await update.message.reply_text(course_info, parse_mode="Markdown")
+        await update.message.reply_text(course_info, parse_mode="Markdown", reply_markup=reply_markup)
 
     await context.bot.send_photo(
         chat_id=chat_id,
@@ -93,6 +98,8 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     screenshot_url = f"/uploads/screenshots/{filename}"
 
+    username = update.message.from_user.username or update.message.from_user.first_name or "User"
+
     registration_data = {
         "telegram_id": user_id,
         "name": name,
@@ -102,20 +109,26 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if isinstance(course.get("_id"), str)
         else course.get("_id"),
         "course_title": course["title"],
+        "course_type": course.get("course_type", "recorded"),
+        "start_date": course.get("start_date"),
+        "start_time": course.get("start_time"),
         "amount": amount,
         "screenshot_url": screenshot_url,
         "status": "pending",
+        "username": username,
     }
 
-    await create_registration(registration_data)
+    reg_id = await create_registration(registration_data)
+    registration_data["_id"] = reg_id
 
-    context.user_data["in_registration"] = False
-    context.user_data["registration_step"] = None
+    await send_admin_notification(registration_data, reg_id)
 
     await update.message.reply_text(
-        "✅ *Screenshot Received!*\n\n"
-        "Your registration is pending review.\n"
-        "Manual Verification on process",
+        f"✅ *Screenshot Received!*\n\n"
+        f"📚 Course: {course['title']}\n\n"
+        f"✅ Your registration is complete and waiting for manual approval.\n\n"
+        f"💡 For any questions, you can ask here.\n"
+        f"🔄 To register for another course, type /end and then /register",
         parse_mode="Markdown",
     )
 

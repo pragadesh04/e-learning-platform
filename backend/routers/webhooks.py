@@ -3,6 +3,10 @@ from pydantic import BaseModel
 import os
 import httpx
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from settings import settings
+
 router = APIRouter(prefix="/webhook", tags=["webhooks"])
 
 
@@ -13,10 +17,7 @@ class WebhookRegistrationPending(BaseModel):
 
 
 async def notify_admin_new_registration(data: dict):
-    bot_token = os.getenv("BOT_TOKEN")
-    admin_chat_id = os.getenv("ADMIN_CHAT_ID")
-
-    if not bot_token or not admin_chat_id:
+    if not settings.bot_token or not settings.admin_chat_id:
         return
 
     message = (
@@ -28,8 +29,8 @@ async def notify_admin_new_registration(data: dict):
 
     async with httpx.AsyncClient() as client:
         await client.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": admin_chat_id, "text": message, "parse_mode": "Markdown"},
+            f"https://api.telegram.org/bot{settings.bot_token}/sendMessage",
+            json={"chat_id": settings.admin_chat_id, "text": message, "parse_mode": "Markdown"},
         )
 
 
@@ -40,9 +41,7 @@ async def registration_pending_webhook(data: WebhookRegistrationPending):
 
 
 async def notify_user_approval(telegram_id: int, course_title: str):
-    bot_token = os.getenv("BOT_TOKEN")
-
-    if not bot_token:
+    if not settings.bot_token:
         return
 
     message = (
@@ -53,7 +52,7 @@ async def notify_user_approval(telegram_id: int, course_title: str):
 
     async with httpx.AsyncClient() as client:
         await client.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            f"https://api.telegram.org/bot{settings.bot_token}/sendMessage",
             json={"chat_id": telegram_id, "text": message, "parse_mode": "Markdown"},
         )
 

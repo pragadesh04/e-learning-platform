@@ -43,6 +43,7 @@ export const Login: React.FC = () => {
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
+            <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-16 mx-auto mb-4" />
             <h1 className="text-4xl font-bold dark:text-white mb-2">Welcome</h1>
             <p className="text-gray-600 dark:text-gray-400">Login to access your courses</p>
           </div>

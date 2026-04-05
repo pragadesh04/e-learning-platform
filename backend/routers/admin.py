@@ -2,8 +2,13 @@ import sys
 import os
 import re
 import httpx
+import html
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+load_dotenv(env_path)
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -22,11 +27,12 @@ from models import (
     ConfigUpdate,
 )
 from utils.telegram import send_telegram_message
+from settings import settings
 import logging
 
 router = APIRouter(prefix="/api", tags=["admin"])
 
-SECRET_KEY = os.getenv("ADMIN_WEBHOOK_SECRET", "your_secret_key_here")
+SECRET_KEY = settings.admin_webhook_secret
 ALGORITHM = "HS256"
 
 security = HTTPBearer()
@@ -133,75 +139,104 @@ async def get_registration(registration_id: str):
 
 @router.put("/registrations/{registration_id}/approve")
 async def approve_registration(registration_id: str):
-    reg = await database.get_registration_by_id(registration_id)
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
+    try:
+        reg = await database.get_registration_by_id(registration_id)
+        if not reg:
+            raise HTTPException(status_code=404, detail="Registration not found")
 
-    await database.update_registration_status(registration_id, "approved")
+        if reg.get("status") == "approved":
+            raise HTTPException(status_code=400, detail="Registration already approved")
 
-    if reg.get("course_id"):
-        await database.increment_course_count(reg["course_id"])
+        await database.update_registration_status(registration_id, "approved")
 
-    course = None
-    if reg.get("course_id"):
-        course = await database.get_course_by_id(reg["course_id"])
+        reg = await database.get_registration_by_id(registration_id)
+        print(f"[DEBUG] Registration after update: {reg}")
+        print(f"[DEBUG] telegram_id type: {type(reg.get('telegram_id'))}, value: {reg.get('telegram_id')}")
 
-    course_title = reg.get("course_title", "the course")
-    telegram_id = reg.get("telegram_id")
-    mobile = reg.get("mobile")
+        if reg.get("course_id"):
+            try:
+                await database.increment_course_count(reg["course_id"])
+            except Exception as e:
+                print(f"[WARN] Failed to increment course count: {e}")
 
-    user_created = False
-    password_display = ""
+        course = None
+        if reg.get("course_id"):
+            course = await database.get_course_by_id(reg["course_id"])
 
-    if mobile:
-        existing_user = await database.get_user_by_mobile(mobile)
-        if not existing_user:
-            import random
-            import string
+        course_title = reg.get("course_title", "the course")
+        telegram_id = reg.get("telegram_id")
+        mobile = reg.get("mobile")
 
-            chars = string.ascii_letters + string.digits
-            raw_password = "".join(random.choices(chars, k=8))
-            password_with_hyphen = raw_password[:4] + "-" + raw_password[4:]
-            password_display = password_with_hyphen.replace("-", " ")
+        user_created = False
+        password_display = ""
 
-            hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt())
-            user_data = {
-                "mobile": mobile,
-                "password_hash": hashed.decode("utf-8"),
-                "name": reg.get("name", "User"),
-                "is_admin": False,
-                "accessible_courses": [],
-            }
-            new_user = await database.create_user(user_data)
-            user_created = True
-            await database.add_course_access(new_user["id"], reg["course_id"])
-        else:
-            password_display = "(existing account)"
-            await database.add_course_access(existing_user["id"], reg["course_id"])
+        if mobile:
+            existing_user = await database.get_user_by_mobile(mobile)
+            if not existing_user:
+                import random
+                import string
 
-    if telegram_id:
-        course_type = course.get("course_type") if course else "recorded"
-        start_date = course.get("start_date") if course else None
-        start_time = course.get("start_time") if course else None
+                chars = string.ascii_letters + string.digits
+                raw_password = "".join(random.choices(chars, k=8))
+                password_with_hyphen = raw_password[:4] + "-" + raw_password[4:]
+                password_display = password_with_hyphen.replace("-", " ")
 
-        if user_created:
-            login_info = f"\n\n📱 Login Credentials:\nMobile: {mobile}\nPassword: {password_display}\n\nPlease login and access your course."
-        else:
-            login_info = f"\n\nYou can login with your existing credentials to access this course."
+                hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt())
+                user_data = {
+                    "mobile": mobile,
+                    "password_hash": hashed.decode("utf-8"),
+                    "name": reg.get("name", "User"),
+                    "is_admin": False,
+                    "accessible_courses": [],
+                }
+                new_user = await database.create_user(user_data)
+                user_created = True
+                course_id_str = str(reg["course_id"]) if reg.get("course_id") else None
+                print(f"[DEBUG] course_id_str: {course_id_str}, type: {type(course_id_str)}")
+                if course_id_str:
+                    await database.add_course_access(new_user["id"], course_id_str)
+            else:
+                password_display = "(existing account)"
+                course_id_str = str(reg["course_id"]) if reg.get("course_id") else None
+                if course_id_str:
+                    await database.add_course_access(existing_user["id"], course_id_str)
 
-        if course_type == "live":
-            timing = ""
-            if start_date and start_time:
-                timing = f"Class timing: {start_date} at {start_time}."
-            elif start_time:
-                timing = f"Class timing: {start_time}."
-            message = f"✅ Your registration for <b>{course_title}</b> has been approved!{timing}\n\nWe will send you the class link 1 hour before the class starts.{login_info}"
-        else:
-            message = f"✅ Your registration for <b>{course_title}</b> has been approved!{login_info}"
+        print(f"[DEBUG] About to notify admins for reg_id: {registration_id}")
+        try:
+            from utils.telegram import notify_all_admins
+            user_name = reg.get("name", "Unknown")
+            await notify_all_admins(registration_id, "approved", approver_name="Dashboard", user_name=user_name, course_title=course_title)
+            print(f"[DEBUG] notify_all_admins completed")
+        except Exception as e:
+            print(f"[ERROR] notify_all_admins failed: {e}")
 
-        await send_telegram_message(telegram_id, message)
+        if telegram_id:
+            course_type = reg.get("course_type", "recorded")
+            start_date = reg.get("start_date")
+            start_time = reg.get("start_time")
+            
+            if course_type == "live":
+                timing = ""
+                if start_date:
+                    timing = f"\n📅 Date: {start_date}"
+                if start_time:
+                    timing += f"\n⏰ Time: {start_time}"
+                message = f"✅ *Your registration is approved!*\n\n📚 *Course:* {course_title}{timing}\n\n📎 We'll send you the meeting link 1 hour before the class starts.\n\nLogin to access your course."
+            else:
+                message = f"✅ *Your registration is approved!*\n\n📚 *Course:* {course_title}\n\n📱 *Login Credentials:*\nMobile: `{mobile}`\nPassword: `{password_display}`\n\nLogin to access your course."
+            
+            try:
+                from utils.telegram import send_telegram_message
+                await send_telegram_message(telegram_id, message)
+            except Exception as e:
+                print(f"[ERROR] Failed to send approval message to user: {e}")
 
-    return {"message": "Registration approved successfully"}
+        return {"message": "Registration approved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Approve registration failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.put("/registrations/{registration_id}/reject")
@@ -210,15 +245,27 @@ async def reject_registration(registration_id: str, reason: str = None):
     if not reg:
         raise HTTPException(status_code=404, detail="Registration not found")
 
+    if reg.get("status") == "rejected":
+        raise HTTPException(status_code=400, detail="Registration already rejected")
+
     await database.update_registration_status(registration_id, "rejected", reason)
 
+    user_name = reg.get("name", "Unknown")
     course_title = reg.get("course_title", "the course")
-    telegram_id = reg.get("telegram_id")
 
+    from utils.telegram import notify_all_admins
+    await notify_all_admins(registration_id, "rejected", reason=reason, approver_name="Dashboard", user_name=user_name, course_title=course_title)
+
+    telegram_id = reg.get("telegram_id")
     if telegram_id:
         rejection_text = f"Reason: {reason}" if reason else "No reason provided."
-        message = f"❌ Your registration for <b>{course_title}</b> has been rejected.\n\n{rejection_text}"
-        await send_telegram_message(telegram_id, message)
+        message = f"❌ *Your registration has been rejected.*\n\n📚 *Course:* {course_title}\n\n{rejection_text}"
+        
+        try:
+            from utils.telegram import send_telegram_message
+            await send_telegram_message(telegram_id, message)
+        except Exception as e:
+            print(f"[ERROR] Failed to send rejection message to user: {e}")
 
     return {"message": "Registration rejected"}
 
