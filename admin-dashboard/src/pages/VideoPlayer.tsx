@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { ArrowLeft, Play, Pause, Maximize, Menu, X } from 'lucide-react'
-import { GlassCard } from '../components/GlassCard'
+import { ArrowLeft, Play, Pause, Menu, X } from 'lucide-react'
 
 function extractVideoId(url: string): string {
   const patterns = [
@@ -80,7 +79,7 @@ export const VideoPlayer: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <div className="p-2 md:p-4 flex items-center justify-between">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-white hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />

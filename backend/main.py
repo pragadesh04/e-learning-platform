@@ -14,7 +14,7 @@ from database import (
     initialize_default_config,
     initialize_admin_user,
 )
-from routers import webhooks_router, auth_router, admin_router
+from routers import webhooks_router, auth_router, admin_router, courses_router, registrations_router
 
 import logging
 
@@ -51,15 +51,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+# Mount uploads directory (screenshots, etc.)
+upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+print(f"[DEBUG] Upload directory: {upload_dir}")
+print(f"[DEBUG] Exists: {os.path.exists(upload_dir)}")
 if os.path.exists(upload_dir):
     app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+else:
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(webhooks_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(courses_router)
+app.include_router(registrations_router)
 
 
 @app.get("/")

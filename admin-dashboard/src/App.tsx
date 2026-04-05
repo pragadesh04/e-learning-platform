@@ -6,8 +6,12 @@ import { Courses } from './pages/Courses'
 import { Registrations } from './pages/Registrations'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
 import { UserDashboard } from './pages/UserDashboard'
 import { VideoPlayer } from './pages/VideoPlayer'
+import { CourseDetail } from './pages/CourseDetail'
+import { MyRegistrations } from './pages/MyRegistrations'
+import { Recommendations } from './pages/Recommendations'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useThemeStore } from './store/themeStore'
 
@@ -27,7 +31,11 @@ const AppContent: React.FC = () => {
     <div className={isDark ? 'dark' : ''}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/course/:courseId" element={<VideoPlayer />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/course/:courseId" element={<CourseDetail />} />
+        <Route path="/watch/:courseId" element={<VideoPlayer />} />
+        <Route path="/my-registrations" element={<MyRegistrations />} />
+        <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/*" element={<MainLayout />} />
       </Routes>
     </div>
@@ -36,7 +44,6 @@ const AppContent: React.FC = () => {
 
 const MainLayout: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth()
-  const { isDark } = useThemeStore()
 
   if (isLoading) {
     return (

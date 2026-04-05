@@ -56,9 +56,9 @@ class CourseResponse(CourseBase):
 
 class RegistrationResponse(BaseModel):
     id: str
-    telegram_id: int
+    telegram_id: Optional[int] = None
     name: str
-    address: str
+    address: Optional[str] = None
     mobile: Optional[str] = None
     course_id: Optional[str] = None
     course_title: str
@@ -66,6 +66,8 @@ class RegistrationResponse(BaseModel):
     screenshot_url: Optional[str] = None
     status: str
     rejection_reason: Optional[str] = None
+    source: Optional[str] = None
+    user_id: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 import bcrypt
-import jwt
+from jose import jwt
 from datetime import datetime, timedelta
 import database
 import models
@@ -48,7 +48,7 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         return user_id
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
@@ -66,6 +66,14 @@ async def get_stats():
 @router.get("/courses", response_model=List[CourseResponse])
 async def list_courses():
     return await database.get_courses()
+
+
+@router.get("/courses/{course_id}")
+async def get_course(course_id: str):
+    course = await database.get_course_by_id(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    return course
 
 
 @router.post("/courses", response_model=dict)
@@ -333,23 +341,6 @@ async def get_video_info(urls: List[str]):
     return results
 
 
-@router.get("/courses/{course_id}/videos")
-async def get_course_videos(course_id: str, user_id: str = Depends(decode_token)):
-    user = await database.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    course_ids = user.get("accessible_courses", [])
-    if course_id not in course_ids and not user.get("is_admin", False):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    course = await database.get_course_by_id(course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    return course.get("videos", [])
-
-
 @router.get("/user/courses")
 async def get_user_courses(user_id: str = Depends(decode_token)):
     user = await database.get_user_by_id(user_id)
@@ -358,24 +349,3 @@ async def get_user_courses(user_id: str = Depends(decode_token)):
 
     courses = await database.get_user_courses(user_id)
     return courses
-
-
-@router.get("/user/registrations")
-async def get_user_registrations(user_id: str = Depends(decode_token)):
-    user = await database.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    mobile = user.get("mobile")
-    if not mobile:
-        raise HTTPException(status_code=400, detail="User mobile not found")
-
-    db = await database.get_database()
-    registrations = []
-    cursor = db.registrations.find({"mobile": mobile}).sort("created_at", -1)
-    async for reg in cursor:
-        reg["id"] = str(reg["_id"])
-        reg.pop("_id", None)
-        reg["course_id"] = str(reg["course_id"]) if reg.get("course_id") else None
-        registrations.append(reg)
-    return registrations

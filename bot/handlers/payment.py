@@ -96,7 +96,7 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mobile = context.user_data.get("reg_mobile", "")
     amount = context.user_data.get("payment_amount", 0)
 
-    screenshot_url = f"/uploads/screenshots/{filename}"
+    screenshot_url = f"/uploads/screenshots/web/{filename}"
 
     username = update.message.from_user.username or update.message.from_user.first_name or "User"
 

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     def admin_chat_ids(self) -> List[str]:
         return parse_admin_ids(self.admin_chat_id)
     
-    admin_webhook_secret: str = "your_secret_key_here"
+    admin_webhook_secret: str = "trinity_guards_secret_key_minimum_32_bytes_required_for_hs256_algorithm_security"
     
     port: int = 8000
     

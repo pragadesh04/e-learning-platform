@@ -25,7 +25,7 @@ interface ThemeState {
   initialized: boolean
 }
 
-export const useThemeStore = create<ThemeState>((set, get) => ({
+export const useThemeStore = create<ThemeState>((set) => ({
   isDark: initializeTheme(),
   initialized: true,
   toggle: () => set((state) => {

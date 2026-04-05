@@ -4,11 +4,13 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
+import base64
 
 import database
 import models
@@ -55,6 +57,53 @@ async def get_current_user(
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+@router.post("/register", response_model=models.LoginResponse)
+async def register(
+    name: str = Form(...),
+    mobile: str = Form(...),
+    password: str = Form(...),
+):
+    logger.info(f"Registration attempt for mobile: {mobile}")
+    try:
+        existing_user = await database.get_user_by_mobile(mobile)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Mobile number already registered")
+
+        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        
+        user_data = {
+            "mobile": mobile,
+            "password_hash": hashed.decode("utf-8"),
+            "name": name,
+            "is_admin": False,
+            "accessible_courses": [],
+        }
+        
+        user = await database.create_user(user_data)
+        
+        access_token = create_access_token({"sub": user["id"]})
+        logger.info(f"Registration successful for: {mobile}")
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["id"],
+                "mobile": user["mobile"],
+                "name": user["name"],
+                "is_admin": user.get("is_admin", False),
+                "accessible_courses": user.get("accessible_courses", []),
+                "created_at": user.get("created_at"),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
 @router.post("/login", response_model=models.LoginResponse)

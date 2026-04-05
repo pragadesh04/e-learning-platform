@@ -1,29 +1,43 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { api } from '../lib/api'
 import { useThemeStore } from '../store/themeStore'
-import { Eye, EyeOff, LogIn, Sun, Moon } from 'lucide-react'
+import { Eye, EyeOff, UserPlus, Sun, Moon } from 'lucide-react'
 
-export const Login: React.FC = () => {
+export const Signup: React.FC = () => {
+  const [name, setName] = useState('')
   const [mobile, setMobile] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
   const { isDark, toggle } = useThemeStore()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      await login(mobile, password)
-      navigate('/')
+      const result = await api.register(name, mobile, password)
+      localStorage.setItem('token', result.access_token)
+      localStorage.setItem('user', JSON.stringify(result.user))
+      navigate('/courses')
     } catch (err: any) {
-      setError(err.message || 'Invalid mobile or password')
+      setError(err.message || 'Registration failed')
     } finally {
       setIsLoading(false)
     }
@@ -44,12 +58,12 @@ export const Login: React.FC = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-16 mx-auto mb-4" />
-            <h1 className="text-4xl font-bold dark:text-white mb-2">Welcome</h1>
-            <p className="text-gray-600 dark:text-gray-400">Login to access your courses</p>
+            <h1 className="text-4xl font-bold dark:text-white mb-2">Create Account</h1>
+            <p className="text-gray-600 dark:text-gray-400">Register to access courses</p>
           </div>
 
           <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-800">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
                   {error}
@@ -58,14 +72,30 @@ export const Login: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Mobile Number
+                  Full Name
                 </label>
                 <input
                   type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input-field dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   className="input-field dark:bg-gray-800 dark:text-white dark:border-gray-700"
                   placeholder="Enter your mobile number"
+                  pattern="[0-9]{10,}"
+                  title="Enter at least 10 digits"
                   required
                 />
               </div>
@@ -80,7 +110,8 @@ export const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="input-field pr-10 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                    placeholder="Enter your password"
+                    placeholder="Create a password (min 6 chars)"
+                    minLength={6}
                     required
                   />
                   <button
@@ -93,17 +124,31 @@ export const Login: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input-field dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
                 className="btn-primary w-full flex items-center justify-center gap-2"
               >
                 {isLoading ? (
-                  'Logging in...'
+                  'Creating account...'
                 ) : (
                   <>
-                    <LogIn className="w-5 h-5" />
-                    Login
+                    <UserPlus className="w-5 h-5" />
+                    Sign Up
                   </>
                 )}
               </button>
@@ -111,9 +156,9 @@ export const Login: React.FC = () => {
           </div>
 
           <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              Sign Up
+            Already have an account?{' '}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Login
             </Link>
           </p>
         </div>

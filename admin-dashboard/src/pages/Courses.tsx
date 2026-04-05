@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, Video, PlayCircle, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, PlayCircle, X } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'

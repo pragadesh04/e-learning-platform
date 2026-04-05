@@ -7,8 +7,8 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}, timeout = 3
   const timeoutId = setTimeout(() => controller.abort(), timeout)
   const token = getToken()
   
-  const headers: HeadersInit = {
-    ...options.headers,
+  const headers: Record<string, string> = {
+    ...options.headers as Record<string, string>,
   }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
@@ -45,6 +45,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
 }
 
 export const api = {
+  // Auth endpoints
   async login(mobile: string, password: string) {
     const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
       method: 'POST',
@@ -55,39 +56,98 @@ export const api = {
     return res.json()
   },
 
+  async register(name: string, mobile: string, password: string) {
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('mobile', mobile)
+    formData.append('password', password)
+    
+    const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Registration failed' }))
+      throw new Error(err.detail || 'Registration failed')
+    }
+    return res.json()
+  },
+
   async getMe() {
     const res = await fetchWithAuth(`${API_BASE}/auth/me`)
     if (!res.ok) throw new Error('Failed to get user')
     return res.json()
   },
 
+  // Courses endpoints (public & user)
+  async getCourses() {
+    const res = await fetchWithAuth(`${API_BASE}/courses`)
+    if (!res.ok) throw new Error('Failed to fetch courses')
+    return res.json()
+  },
+
+  async getCourseById(courseId: string) {
+    const res = await fetchWithAuth(`${API_BASE}/courses/${courseId}`)
+    if (!res.ok) throw new Error('Failed to fetch course')
+    return res.json()
+  },
+
+  async getRecommendations() {
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/recommendations`)
+    if (!res.ok) throw new Error('Failed to fetch recommendations')
+    return res.json()
+  },
+
+  async getCourseQR(courseId: string) {
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/${courseId}/qr`)
+    if (!res.ok) throw new Error('Failed to generate QR code')
+    return res.json()
+  },
+
+  // Registrations endpoints
+  // User's registrations (web)
+  async getUserRegistrations() {
+    const res = await fetchWithAuth(`${API_BASE}/web/user`)
+    if (!res.ok) throw new Error('Failed to fetch registrations')
+    return res.json()
+  },
+
+  async registerCourse(courseId: string, name: string, address: string, mobile: string, screenshot: File) {
+    const formData = new FormData()
+    formData.append('course_id', courseId)
+    formData.append('name', name)
+    formData.append('address', address)
+    formData.append('mobile', mobile)
+    formData.append('screenshot', screenshot)
+    
+    const res = await fetchWithAuth(`${API_BASE}/web`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Registration failed' }))
+      throw new Error(err.detail || 'Registration failed')
+    }
+    return res.json()
+  },
+
+  // User's accessible courses
   async getUserCourses() {
     const res = await fetchWithAuth(`${API_BASE}/user/courses`)
     if (!res.ok) throw new Error('Failed to get user courses')
     return res.json()
   },
 
-  async getUserRegistrations() {
-    const res = await fetchWithAuth(`${API_BASE}/user/registrations`)
-    if (!res.ok) throw new Error('Failed to get user registrations')
-    return res.json()
-  },
-
   async getCourseVideos(courseId: string) {
-    const res = await fetchWithAuth(`${API_BASE}/courses/${courseId}/videos`)
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/${courseId}/videos`)
     if (!res.ok) throw new Error('Failed to get course videos')
     return res.json()
   },
 
+  // Admin endpoints
   async getStats() {
     const res = await fetchWithAuth(`${API_BASE}/stats`)
     if (!res.ok) throw new Error('Failed to fetch stats')
-    return res.json()
-  },
-
-  async getCourses() {
-    const res = await fetchWithAuth(`${API_BASE}/courses`)
-    if (!res.ok) throw new Error('Failed to fetch courses')
     return res.json()
   },
 

@@ -61,8 +61,13 @@ async def get_courses():
 async def get_course_by_id(course_id: str):
     db = await get_database()
     from bson import ObjectId
+    from bson.errors import InvalidId
 
-    course = await db.courses.find_one({"_id": ObjectId(course_id)})
+    try:
+        course = await db.courses.find_one({"_id": ObjectId(course_id)})
+    except (InvalidId, ValueError):
+        return None
+    
     if course:
         course["id"] = str(course["_id"])
         course["_id"] = str(course["_id"])
@@ -141,15 +146,18 @@ async def get_registrations(
 async def get_registration_by_id(reg_id: str):
     db = await get_database()
     from bson import ObjectId
+    from bson.errors import InvalidId
 
-    reg = await db.registrations.find_one({"_id": ObjectId(reg_id)})
+    try:
+        reg = await db.registrations.find_one({"_id": ObjectId(reg_id)})
+    except (InvalidId, ValueError):
+        return None
+    
     if reg:
         reg["id"] = str(reg["_id"])
         reg.pop("_id", None)
-        # Convert course_id to string if it's an ObjectId
         if reg.get("course_id"):
             reg["course_id"] = str(reg["course_id"])
-        # Convert any other potential ObjectId fields
         for key, value in reg.items():
             if hasattr(value, '__class__') and 'ObjectId' in str(type(value)):
                 reg[key] = str(value)
@@ -253,12 +261,32 @@ async def get_user_by_mobile(mobile: str):
 async def get_user_by_id(user_id: str):
     db = await get_database()
     from bson import ObjectId
+    from bson.errors import InvalidId
 
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
-    if user:
-        user["id"] = str(user["_id"])
-        user.pop("_id", None)
-    return user
+    if not user_id:
+        return None
+        
+    # Try as ObjectId first
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if user:
+            user["id"] = str(user["_id"])
+            user.pop("_id", None)
+            return user
+    except (InvalidId, ValueError, Exception):
+        pass
+    
+    # Try as mobile number
+    try:
+        user = await db.users.find_one({"mobile": user_id})
+        if user:
+            user["id"] = str(user["_id"])
+            user.pop("_id", None)
+            return user
+    except Exception:
+        pass
+    
+    return None
 
 
 async def add_course_access(user_id: str, course_id: str):
@@ -309,3 +337,72 @@ async def initialize_admin_user():
         }
     )
     print("Admin user created: Mobile=5555511111, Password=Admin@123", flush=True)
+
+
+async def get_available_courses():
+    db = await get_database()
+    courses = []
+    cursor = db.courses.find({"registration_open": True}).sort("registration_count", -1)
+    async for course in cursor:
+        course["id"] = str(course["_id"])
+        course["_id"] = str(course["_id"])
+        courses.append(course)
+    return courses
+
+
+async def get_popular_courses(limit: int = 10):
+    db = await get_database()
+    courses = []
+    cursor = db.courses.find({"registration_open": True}).sort("registration_count", -1).limit(limit)
+    async for course in cursor:
+        course["id"] = str(course["_id"])
+        course["_id"] = str(course["_id"])
+        courses.append(course)
+    return courses
+
+
+async def get_user_registrations(user_id: str):
+    db = await get_database()
+
+    registrations = []
+    
+    # Get user's mobile for Telegram registrations
+    mobile = None
+    try:
+        user = await get_user_by_id(user_id)
+        mobile = user.get("mobile") if user else None
+    except Exception:
+        pass
+    
+    # Query by user_id OR mobile to catch all registrations
+    if mobile:
+        query = {"$or": [{"user_id": user_id}, {"mobile": mobile}]}
+    else:
+        query = {"user_id": user_id}
+    
+    try:
+        cursor = db.registrations.find(query).sort("created_at", -1)
+        async for reg in cursor:
+            reg["id"] = str(reg["_id"])
+            reg.pop("_id", None)
+            if reg.get("course_id"):
+                reg["course_id"] = str(reg["course_id"])
+            registrations.append(reg)
+    except Exception as e:
+        print(f"Error fetching registrations: {e}")
+    
+    return registrations
+
+
+async def create_registration(registration_data: dict):
+    db = await get_database()
+    from datetime import datetime
+    from bson import ObjectId
+
+    registration_data["created_at"] = datetime.utcnow()
+    registration_data["updated_at"] = datetime.utcnow()
+    registration_data["_id"] = ObjectId()
+    result = await db.registrations.insert_one(registration_data)
+    registration_data["id"] = str(result.inserted_id)
+    registration_data["_id"] = str(registration_data["_id"])
+    return registration_data
