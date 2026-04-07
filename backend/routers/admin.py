@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(env_path)
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 import bcrypt
@@ -51,6 +51,16 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    user_id = decode_token(credentials)
+    user = await database.get_user_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
 
 
 logging.basicConfig(

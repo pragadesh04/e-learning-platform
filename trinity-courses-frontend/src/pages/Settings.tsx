@@ -31,8 +31,8 @@ export const Settings: React.FC = () => {
       <div className="max-w-2xl">
         <GlassCard>
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <QrCode className="w-6 h-6 text-primary" />
+            <div className="p-3 rounded-xl bg-black/10 dark:bg-white/10">
+              <QrCode className="w-6 h-6 text-black dark:text-white" />
             </div>
             <div>
               <h2 className="text-xl font-semibold dark:text-white">UPI Configuration</h2>
@@ -95,7 +95,7 @@ export const Settings: React.FC = () => {
               This dashboard allows you to manage courses, view registrations, and configure payment settings.
             </p>
             <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
-              <p className="font-medium text-primary">Version 1.0.0</p>
+              <p className="font-medium text-black dark:text-white">Version 1.0.0</p>
               <p className="text-gray-500 dark:text-gray-400">
                 Course Registration Bot with AI Integration
               </p>

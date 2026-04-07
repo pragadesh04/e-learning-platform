@@ -106,7 +106,7 @@ export const MyRegistrations: React.FC = () => {
                 {reg.status === 'approved' && (
                   <Link
                     to={`/watch/${reg.course_id}`}
-                    className="inline-flex items-center gap-2 text-primary hover:underline"
+                    className="inline-flex items-center gap-2 text-black dark:text-white hover:underline"
                   >
                     <Play className="w-4 h-4" />
                     Access Course

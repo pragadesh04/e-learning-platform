@@ -202,8 +202,8 @@ export const Courses: React.FC = () => {
               )}
               
               <div className="flex items-center justify-between mb-4">
-                <span className="text-2xl font-bold text-primary">₹{course.fee}</span>
-                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                <span className="text-2xl font-bold text-black dark:text-white">₹{course.fee}</span>
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-black dark:text-white text-sm">
                   {course.registration_count} enrolled
                 </span>
               </div>
@@ -617,7 +617,7 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
               <button
                 type="button"
                 onClick={addVideoUrl}
-                className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+                className="flex items-center gap-1 text-sm text-black dark:text-white hover:text-black dark:text-white/80"
               >
                 <Plus className="w-4 h-4" />
                 Add Video

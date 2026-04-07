@@ -158,7 +158,7 @@ export const CourseDetail: React.FC = () => {
               <h2 className="text-xl font-bold dark:text-white mb-4">Course Details</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <Clock className="w-5 h-5 text-primary mb-2" />
+                  <Clock className="w-5 h-5 text-black dark:text-white mb-2" />
                   <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
                   <p className="font-semibold dark:text-white">
                     {course.course_type === 'live' 
@@ -167,32 +167,32 @@ export const CourseDetail: React.FC = () => {
                   </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <Users className="w-5 h-5 text-primary mb-2" />
+                  <Users className="w-5 h-5 text-black dark:text-white mb-2" />
                   <p className="text-xs text-gray-500 dark:text-gray-400">Enrolled</p>
                   <p className="font-semibold dark:text-white">{course.registration_count || 0}</p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <Play className="w-5 h-5 text-primary mb-2" />
+                  <Play className="w-5 h-5 text-black dark:text-white mb-2" />
                   <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
                   <p className="font-semibold dark:text-white capitalize">{course.course_type}</p>
                 </div>
                 {course.start_date && (
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <Calendar className="w-5 h-5 text-primary mb-2" />
+                    <Calendar className="w-5 h-5 text-black dark:text-white mb-2" />
                     <p className="text-xs text-gray-500 dark:text-gray-400">Start Date</p>
                     <p className="font-semibold dark:text-white">{course.start_date}</p>
                   </div>
                 )}
                 {course.start_time && (
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <Clock className="w-5 h-5 text-primary mb-2" />
+                    <Clock className="w-5 h-5 text-black dark:text-white mb-2" />
                     <p className="text-xs text-gray-500 dark:text-gray-400">Start Time</p>
                     <p className="font-semibold dark:text-white">{course.start_time}</p>
                   </div>
                 )}
                 {course.sessions && (
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <Play className="w-5 h-5 text-primary mb-2" />
+                    <Play className="w-5 h-5 text-black dark:text-white mb-2" />
                     <p className="text-xs text-gray-500 dark:text-gray-400">Sessions</p>
                     <p className="font-semibold dark:text-white">{course.sessions}</p>
                   </div>
@@ -205,8 +205,8 @@ export const CourseDetail: React.FC = () => {
               <h2 className="text-xl font-bold dark:text-white mb-4">What's Included</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-black dark:text-white" />
                   </div>
                   <div>
                     <p className="font-medium dark:text-white">
@@ -216,8 +216,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <BadgeCheck className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                    <BadgeCheck className="w-5 h-5 text-black dark:text-white" />
                   </div>
                   <div>
                     <p className="font-medium dark:text-white">Certificate</p>
@@ -226,8 +226,8 @@ export const CourseDetail: React.FC = () => {
                 </div>
                 {course.sessions && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Play className="w-5 h-5 text-primary" />
+                    <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                      <Play className="w-5 h-5 text-black dark:text-white" />
                     </div>
                     <div>
                       <p className="font-medium dark:text-white">{course.sessions} Sessions</p>
@@ -236,8 +236,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-black dark:text-white" />
                   </div>
                   <div>
                     <p className="font-medium dark:text-white">Community</p>
@@ -254,7 +254,7 @@ export const CourseDetail: React.FC = () => {
               {/* Price Card */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Course Fee</p>
-                <p className="text-4xl font-bold text-primary">₹{course.fee}</p>
+                <p className="text-4xl font-bold text-black dark:text-white">₹{course.fee}</p>
                 
                 {isRegistered ? (
                   <div className={`mt-4 p-4 rounded-xl ${getStatusBadge(myRegistration.status).bg}`}>
@@ -351,7 +351,7 @@ export const CourseDetail: React.FC = () => {
                 {qrData && (
                   <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Scan QR code to pay <span className="font-bold text-primary">₹{qrData.amount}</span>
+                      Scan QR code to pay <span className="font-bold text-black dark:text-white">₹{qrData.amount}</span>
                     </p>
                     <img 
                       src={qrData.qr_code} 

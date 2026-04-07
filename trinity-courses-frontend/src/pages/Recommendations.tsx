@@ -49,7 +49,7 @@ export const Recommendations: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-8 h-8 text-primary" />
+            <Sparkles className="w-8 h-8 text-black dark:text-white" />
             <h1 className="text-3xl font-bold dark:text-white">Recommended Courses</h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -113,7 +113,7 @@ export const Recommendations: React.FC = () => {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="font-semibold dark:text-white line-clamp-2">{course.title}</h3>
-                    <span className="text-lg font-bold text-primary shrink-0">₹{course.fee}</span>
+                    <span className="text-lg font-bold text-black dark:text-white shrink-0">₹{course.fee}</span>
                   </div>
                   
                   <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">

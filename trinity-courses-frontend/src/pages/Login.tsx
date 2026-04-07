@@ -112,7 +112,7 @@ export const Login: React.FC = () => {
 
           <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
+            <Link to="/signup" className="text-black dark:text-white hover:underline font-medium">
               Sign Up
             </Link>
           </p>

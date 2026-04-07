@@ -10,9 +10,15 @@ from database import (
     connect_to_mongo,
     close_mongo_connection,
     initialize_default_config,
-    initialize_admin_user,
 )
-from routers import admin_router, webhooks_router, auth_router
+from routers import (
+    admin_router,
+    webhooks_router,
+    auth_router,
+    courses_router,
+    registrations_router,
+    inbox_router,
+)
 import logging
 import uvicorn
 
@@ -23,7 +29,6 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
     await initialize_default_config()
-    await initialize_admin_user()
     yield
     await close_mongo_connection()
 
@@ -40,6 +45,9 @@ app.add_middleware(
 app.include_router(admin_router)
 app.include_router(webhooks_router)
 app.include_router(auth_router)
+app.include_router(courses_router)
+app.include_router(registrations_router)
+app.include_router(inbox_router)
 
 
 @app.get("/")

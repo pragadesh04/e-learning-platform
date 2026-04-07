@@ -235,6 +235,27 @@ async def initialize_default_config():
         )
 
 
+async def initialize_admin_user():
+    db = await get_database()
+    admin_mobile = os.getenv("ADMIN_MOBILE", "1234567890")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+
+    existing_admin = await get_user_by_mobile(admin_mobile)
+    if not existing_admin:
+        import bcrypt
+
+        hashed = bcrypt.hashpw(admin_password.encode("utf-8"), bcrypt.gensalt())
+        await create_user(
+            {
+                "mobile": admin_mobile,
+                "password_hash": hashed.decode("utf-8"),
+                "name": "Admin",
+                "is_admin": True,
+                "accessible_courses": [],
+            }
+        )
+
+
 async def create_user(user_data: dict):
     db = await get_database()
     from datetime import datetime

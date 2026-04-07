@@ -132,14 +132,14 @@ export const Registrations: React.FC = () => {
                     onClick={openFilterModal}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${
                         activeFilterCount > 0
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary/10'
+                            ? 'bg-black dark:bg-white text-white dark:text-black border-primary'
+                            : 'bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10'
                     }`}
                 >
                     <Filter className="w-4 h-4" />
                     Filter
                     {activeFilterCount > 0 && (
-                        <span className="ml-1 px-2 py-0.5 text-xs bg-white text-primary rounded-full">
+                        <span className="ml-1 px-2 py-0.5 text-xs bg-white text-black dark:text-white rounded-full">
                             {activeFilterCount}
                         </span>
                     )}
@@ -165,8 +165,8 @@ export const Registrations: React.FC = () => {
                             onClick={() => setSelectedReg(reg)} 
                             className="flex items-center gap-6 cursor-pointer"
                         >
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-xl font-bold text-primary">
+                            <div className="w-12 h-12 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                                <span className="text-xl font-bold text-black dark:text-white">
                                     {reg.name?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                             </div>
@@ -184,11 +184,11 @@ export const Registrations: React.FC = () => {
                                 </p>
                             </div>
                             <div className="text-right">
-                                <p className="font-semibold text-primary mb-2">₹{reg.amount}</p>
+                                <p className="font-semibold text-black dark:text-white mb-2">₹{reg.amount}</p>
                                 {getStatusBadge(reg.status)}
                             </div>
-                            <button className="p-2 rounded-full hover:bg-primary/10 transition-colors">
-                                <Eye className="w-5 h-5 text-primary" />
+                            <button className="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                                <Eye className="w-5 h-5 text-black dark:text-white" />
                             </button>
                         </GlassCard>
                     ))}
@@ -314,8 +314,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
         <GlassModal isOpen={!!registration} onClose={onClose} title="Registration Details">
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-primary">
+                    <div className="w-16 h-16 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-black dark:text-white">
                             {registration.name?.charAt(0)?.toUpperCase() || '?'}
                         </span>
                     </div>
@@ -342,7 +342,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
                     <div className="p-4 rounded-xl bg-white/30 dark:bg-black/30">
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Amount Paid</p>
-                        <p className="text-2xl font-bold text-primary">₹{registration.amount}</p>
+                        <p className="text-2xl font-bold text-black dark:text-white">₹{registration.amount}</p>
                     </div>
                     {registration.rejection_reason && (
                         <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20">

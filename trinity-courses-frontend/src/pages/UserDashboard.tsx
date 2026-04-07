@@ -7,7 +7,7 @@ import { api } from '../lib/api'
 import { 
   Play, Clock, LogOut, Menu, X, Home, 
   CheckCircle, Clock3, XCircle, Search, Sun, Moon,
-  Video, Sparkles, Compass, FileText, ArrowRight, BookOpen
+  Video, Sparkles, Compass, FileText, ArrowRight, BookOpen, Bell
 } from 'lucide-react'
 
 type Tab = 'home' | 'courses' | 'mycourses' | 'registrations'
@@ -19,6 +19,7 @@ export const UserDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const { data: myCourses, isLoading: coursesLoading } = useQuery({
     queryKey: ['userCourses'],
@@ -151,14 +152,14 @@ export const UserDashboard: React.FC = () => {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-primary" />
+                  <Sparkles className="w-6 h-6 text-black dark:text-white" />
                   <h2 className="text-2xl font-bold dark:text-white">
                     {recommendations?.type === 'ai_recommendations' ? 'Recommended for You' : 'Popular Courses'}
                   </h2>
                 </div>
                 <button
                   onClick={() => setActiveTab('courses')}
-                  className="flex items-center gap-1 text-primary hover:underline text-sm font-medium"
+                  className="flex items-center gap-1 text-black dark:text-white hover:underline text-sm font-medium"
                 >
                   View All <ArrowRight className="w-4 h-4" />
                 </button>
@@ -203,7 +204,7 @@ export const UserDashboard: React.FC = () => {
                         <div className="p-3">
                           <div className="flex items-center justify-between">
                             <h3 className="font-semibold dark:text-white text-sm line-clamp-2 flex-1">{course.title}</h3>
-                            <span className="text-sm font-bold text-primary ml-2">₹{course.fee}</span>
+                            <span className="text-sm font-bold text-black dark:text-white ml-2">₹{course.fee}</span>
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-2">
                             {course.description}
@@ -243,7 +244,7 @@ export const UserDashboard: React.FC = () => {
           <>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Compass className="w-6 h-6 text-primary" />
+                <Compass className="w-6 h-6 text-black dark:text-white" />
                 <h2 className="text-2xl font-bold dark:text-white">Browse Courses</h2>
               </div>
             </div>
@@ -293,7 +294,7 @@ export const UserDashboard: React.FC = () => {
                       <div className="p-3">
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold dark:text-white text-sm line-clamp-2 flex-1">{course.title}</h3>
-                          <span className="text-sm font-bold text-primary ml-2">₹{course.fee}</span>
+                          <span className="text-sm font-bold text-black dark:text-white ml-2">₹{course.fee}</span>
                         </div>
                         <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-2">
                           {course.description}
@@ -463,17 +464,26 @@ export const UserDashboard: React.FC = () => {
             >
               {sidebarOpen ? <X className="w-6 h-6 dark:text-white" /> : <Menu className="w-6 h-6 dark:text-white" />}
             </button>
-            <h1 className="text-3xl font-bold text-red-600">Trinity</h1>
+            <h1 className="text-3xl font-bold text-black dark:text-white">Trinity</h1>
           </div>
 
-          <div className="flex-1 max-w-xl mx-4 hidden md:block">
+          {/* Search toggle button - visible on mobile */}
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
+          >
+            <Search className="w-5 h-5 dark:text-white" />
+          </button>
+
+          {/* Desktop Search - always visible */}
+          <div className="hidden md:block flex-1 max-w-xl mx-4">
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search courses..."
-                className="w-full px-4 py-2 pl-10 rounded-full bg-gray-100 dark:bg-gray-800 dark:text-white border-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 pl-10 rounded-full bg-gray-100 dark:bg-gray-800 dark:text-white border-none focus:ring-2 focus:ring-black dark:focus:ring-white"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
@@ -481,26 +491,32 @@ export const UserDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate('/inbox')}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <Bell className="w-5 h-5 dark:text-white" />
+            </button>
+            <button
               onClick={toggle}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               {isDark ? <Sun className="w-5 h-5 dark:text-white" /> : <Moon className="w-5 h-5" />}
             </button>
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-medium">
+            <div className="w-8 h-8 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black font-medium">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
           </div>
         </div>
 
-        {/* Mobile Search */}
-        <div className="md:hidden px-4 pb-3">
+        {/* Mobile Search - collapsible */}
+        <div className={`md:hidden px-4 pb-3 overflow-hidden transition-all duration-300 ${searchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="relative">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search courses..."
-              className="w-full px-4 py-2 pl-10 rounded-full bg-gray-100 dark:bg-gray-800 dark:text-white border-none"
+              className="w-full px-4 py-2 pl-10 rounded-full bg-gray-100 dark:bg-gray-800 dark:text-white border-none focus:ring-2 focus:ring-black dark:focus:ring-white"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           </div>
@@ -513,28 +529,28 @@ export const UserDashboard: React.FC = () => {
           <nav className="p-4 space-y-2 flex-1 flex flex-col">
             <button
               onClick={() => setActiveTab('home')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'home' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'home' ? 'bg-black dark:bg-white text-white dark:text-black' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Home className="w-5 h-5" />
               <span>Home</span>
             </button>
             <button
               onClick={() => setActiveTab('courses')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'courses' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'courses' ? 'bg-black dark:bg-white text-white dark:text-black' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Compass className="w-5 h-5" />
               <span>Browse Courses</span>
             </button>
             <button
               onClick={() => setActiveTab('mycourses')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'mycourses' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'mycourses' ? 'bg-black dark:bg-white text-white dark:text-black' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <Video className="w-5 h-5" />
               <span>My Courses</span>
             </button>
             <button
               onClick={() => setActiveTab('registrations')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'registrations' ? 'bg-primary text-white' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'registrations' ? 'bg-black dark:bg-white text-white dark:text-black' : 'dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               <FileText className="w-5 h-5" />
               <span>Registrations</span>

@@ -38,6 +38,9 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
     if (error.name === 'AbortError') {
       throw new Error('Request timed out')
     }
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Failed to connect to server. Please check your internet connection.')
+    }
     throw error
   } finally {
     clearTimeout(timeoutId)
@@ -47,13 +50,23 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
 export const api = {
   // Auth endpoints
   async login(mobile: string, password: string) {
-    const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile, password }),
-    })
-    if (!res.ok) throw new Error('Invalid mobile or password')
-    return res.json()
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, password }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Server error: ${res.status}`)
+      }
+      return res.json()
+    } catch (error: any) {
+      if (error.message.includes('connect') || error.message.includes('Failed to fetch')) {
+        throw new Error('Cannot connect to server. Please check your internet connection.')
+      }
+      throw error
+    }
   },
 
   async register(name: string, mobile: string, password: string) {
