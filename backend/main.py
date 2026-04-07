@@ -14,9 +14,14 @@ from database import (
     connect_to_mongo,
     close_mongo_connection,
     initialize_default_config,
-    initialize_admin_user,
 )
-from routers import webhooks_router, auth_router, admin_router, courses_router, registrations_router
+from routers import (
+    webhooks_router,
+    auth_router,
+    admin_router,
+    courses_router,
+    registrations_router,
+)
 from utils.cleanup import cleanup_expired_screenshots
 from settings import settings
 
@@ -40,17 +45,19 @@ async def daily_cleanup_task():
             next_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
             if now >= next_midnight:
                 next_midnight = next_midnight.replace(day=next_midnight.day + 1)
-            
+
             sleep_seconds = (next_midnight - now).total_seconds()
-            logger.info(f"Next screenshot cleanup scheduled in {sleep_seconds/3600:.1f} hours")
-            
+            logger.info(
+                f"Next screenshot cleanup scheduled in {sleep_seconds / 3600:.1f} hours"
+            )
+
             await asyncio.sleep(sleep_seconds)
-            
+
             # Run cleanup
             logger.info("Running daily screenshot cleanup...")
             await cleanup_expired_screenshots(days=30)
             logger.info("Screenshot cleanup completed")
-            
+
         except Exception as e:
             logger.error(f"Cleanup task error: {e}")
             await asyncio.sleep(3600)  # Retry after 1 hour on error
@@ -60,13 +67,12 @@ async def daily_cleanup_task():
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
     await initialize_default_config()
-    await initialize_admin_user()
-    
+
     # Start background cleanup task
     cleanup_task = asyncio.create_task(daily_cleanup_task())
-    
+
     yield
-    
+
     # Cleanup on shutdown
     cleanup_task.cancel()
     await close_mongo_connection()

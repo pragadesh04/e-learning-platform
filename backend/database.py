@@ -67,7 +67,7 @@ async def get_course_by_id(course_id: str):
         course = await db.courses.find_one({"_id": ObjectId(course_id)})
     except (InvalidId, ValueError):
         return None
-    
+
     if course:
         course["id"] = str(course["_id"])
         course["_id"] = str(course["_id"])
@@ -152,14 +152,14 @@ async def get_registration_by_id(reg_id: str):
         reg = await db.registrations.find_one({"_id": ObjectId(reg_id)})
     except (InvalidId, ValueError):
         return None
-    
+
     if reg:
         reg["id"] = str(reg["_id"])
         reg.pop("_id", None)
         if reg.get("course_id"):
             reg["course_id"] = str(reg["course_id"])
         for key, value in reg.items():
-            if hasattr(value, '__class__') and 'ObjectId' in str(type(value)):
+            if hasattr(value, "__class__") and "ObjectId" in str(type(value)):
                 reg[key] = str(value)
     return reg
 
@@ -265,7 +265,7 @@ async def get_user_by_id(user_id: str):
 
     if not user_id:
         return None
-        
+
     # Try as ObjectId first
     try:
         user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -275,7 +275,7 @@ async def get_user_by_id(user_id: str):
             return user
     except (InvalidId, ValueError, Exception):
         pass
-    
+
     # Try as mobile number
     try:
         user = await db.users.find_one({"mobile": user_id})
@@ -285,7 +285,7 @@ async def get_user_by_id(user_id: str):
             return user
     except Exception:
         pass
-    
+
     return None
 
 
@@ -315,30 +315,6 @@ async def get_user_courses(user_id: str):
     return courses
 
 
-async def initialize_admin_user():
-    db = await get_database()
-    from datetime import datetime
-
-    existing_admin = await db.users.find_one({"mobile": "5555511111"})
-    if existing_admin:
-        return
-
-    import bcrypt
-
-    hashed = bcrypt.hashpw("Admin@123".encode("utf-8"), bcrypt.gensalt())
-    await db.users.insert_one(
-        {
-            "mobile": "5555511111",
-            "password_hash": hashed.decode("utf-8"),
-            "name": "Admin",
-            "is_admin": True,
-            "accessible_courses": [],
-            "created_at": datetime.utcnow(),
-        }
-    )
-    print("Admin user created: Mobile=5555511111, Password=Admin@123", flush=True)
-
-
 async def get_available_courses():
     db = await get_database()
     courses = []
@@ -353,7 +329,11 @@ async def get_available_courses():
 async def get_popular_courses(limit: int = 10):
     db = await get_database()
     courses = []
-    cursor = db.courses.find({"registration_open": True}).sort("registration_count", -1).limit(limit)
+    cursor = (
+        db.courses.find({"registration_open": True})
+        .sort("registration_count", -1)
+        .limit(limit)
+    )
     async for course in cursor:
         course["id"] = str(course["_id"])
         course["_id"] = str(course["_id"])
@@ -365,7 +345,7 @@ async def get_user_registrations(user_id: str):
     db = await get_database()
 
     registrations = []
-    
+
     # Get user's mobile for Telegram registrations
     mobile = None
     try:
@@ -373,13 +353,13 @@ async def get_user_registrations(user_id: str):
         mobile = user.get("mobile") if user else None
     except Exception:
         pass
-    
+
     # Query by user_id OR mobile to catch all registrations
     if mobile:
         query = {"$or": [{"user_id": user_id}, {"mobile": mobile}]}
     else:
         query = {"user_id": user_id}
-    
+
     try:
         cursor = db.registrations.find(query).sort("created_at", -1)
         async for reg in cursor:
@@ -390,7 +370,7 @@ async def get_user_registrations(user_id: str):
             registrations.append(reg)
     except Exception as e:
         print(f"Error fetching registrations: {e}")
-    
+
     return registrations
 
 
