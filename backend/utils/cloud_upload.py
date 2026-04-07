@@ -33,6 +33,22 @@ def upload_screenshot(file, folder="screenshots"):
         "uploaded_at": datetime.utcnow().isoformat(),
     }
 
+    result = cloudinary.uploader.upload(
+        file,
+        folder=folder,
+        resource_type="image",
+        transformation=[
+            {"quality": "auto", "fetch_format": "auto"},
+            {"width": 800, "height": 800, "crop": "limit"},
+        ],
+    )
+
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+        "uploaded_at": datetime.utcnow().isoformat(),
+    }
+
 
 def delete_screenshot(public_id: str):
     """Delete image from Cloudinary"""
@@ -51,6 +67,19 @@ def upload_course_image(file, folder="courses"):
         raise Exception(
             "Cloudinary is not configured. Please set cloudinary credentials in .env"
         )
+
+    result = cloudinary.uploader.upload(
+        file,
+        folder=folder,
+        resource_type="image",
+        transformation=[{"quality": "auto", "fetch_format": "auto"}],
+    )
+
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+        "uploaded_at": datetime.utcnow().isoformat(),
+    }
 
     result = cloudinary.uploader.upload(
         file,

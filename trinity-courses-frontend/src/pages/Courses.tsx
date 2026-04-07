@@ -23,7 +23,7 @@ export const Courses: React.FC = () => {
   const queryClient = useQueryClient()
 
   const { data: courses, isLoading } = useQuery({
-    queryKey: ['courses'],
+    queryKey: ['courses', searchQuery],
     queryFn: () => searchQuery.length >= 2 ? api.searchAdminCourses(searchQuery) : api.getCourses(),
   })
 
@@ -108,50 +108,61 @@ export const Courses: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold dark:text-white">Courses</h1>
-        <div className="flex items-center gap-3">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold dark:text-white mb-4">Courses</h1>
+        
+        {/* Controls Row */}
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
-          <div className="relative">
+          <div className="relative flex-1 max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search courses..."
-              className="input-field w-48 lg:w-64"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors"
             />
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           </div>
-          <div className="flex items-center gap-2">
-            <SortAsc className="w-4 h-4 text-gray-500" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="input-field w-auto"
+
+          {/* Sort and Add */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <SortAsc className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="pl-9 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-black dark:focus:border-white text-sm"
+                >
+                  <option value="popular">Most Popular</option>
+                  <option value="price">Price</option>
+                  <option value="date">Date Created</option>
+                </select>
+              </div>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-black dark:focus:border-white text-sm"
+              >
+                <option value="desc">High to Low</option>
+                <option value="asc">Low to High</option>
+              </select>
+            </div>
+            
+            <button
+              onClick={() => {
+                setEditingCourse(null)
+                setIsModalOpen(true)
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:opacity-90 transition-opacity"
             >
-              <option value="popular">Most Popular</option>
-              <option value="price">Price</option>
-              <option value="date">Date Created</option>
-            </select>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="input-field w-auto"
-            >
-              <option value="desc">High to Low</option>
-              <option value="asc">Low to High</option>
-            </select>
+              <Plus className="w-5 h-5" />
+              Add Course
+            </button>
           </div>
-          <button
-            onClick={() => {
-              setEditingCourse(null)
-              setIsModalOpen(true)
-            }}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Add Course
-          </button>
         </div>
       </div>
 
