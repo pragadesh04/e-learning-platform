@@ -74,6 +74,33 @@ async def get_course_by_id(course_id: str):
     return course
 
 
+async def search_courses(query: str):
+    """Search courses by title, description, or tags using regex"""
+    db = await get_database()
+    courses = []
+
+    try:
+        regex_pattern = f".*{query}.*"
+        cursor = db.courses.find(
+            {
+                "$or": [
+                    {"title": {"$regex": regex_pattern, "$options": "i"}},
+                    {"description": {"$regex": regex_pattern, "$options": "i"}},
+                    {"tags": {"$regex": regex_pattern, "$options": "i"}},
+                ]
+            }
+        ).sort("registration_count", -1)
+
+        async for course in cursor:
+            course["id"] = str(course["_id"])
+            course["_id"] = str(course["_id"])
+            courses.append(course)
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+
+    return courses
+
+
 async def create_course(course_data: dict):
     db = await get_database()
     from datetime import datetime

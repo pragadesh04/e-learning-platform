@@ -105,6 +105,18 @@ export const api = {
     return res.json()
   },
 
+  async searchCourses(query: string) {
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/search?q=${encodeURIComponent(query)}`)
+    if (!res.ok) throw new Error('Failed to search courses')
+    return res.json()
+  },
+
+  async searchAdminCourses(query: string) {
+    const res = await fetchWithAuth(`${API_BASE}/courses/search?q=${encodeURIComponent(query)}`)
+    if (!res.ok) throw new Error('Failed to search courses')
+    return res.json()
+  },
+
   async getRecommendations() {
     const res = await fetchWithAuth(`${API_BASE}/course-post-login/recommendations`)
     if (!res.ok) throw new Error('Failed to fetch recommendations')

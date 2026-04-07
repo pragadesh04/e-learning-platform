@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(env_path)
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 import bcrypt
@@ -79,6 +79,17 @@ async def list_courses():
     return await database.get_courses()
 
 
+@router.get("/courses/search")
+async def search_admin_courses(q: str = Query("", description="Search query")):
+    """Search courses for admin dashboard"""
+    if not q or len(q.strip()) < 2:
+        return await database.get_courses()
+
+    search_term = q.strip()
+    courses = await database.search_courses(search_term)
+    return courses
+
+
 @router.get("/courses/{course_id}")
 async def get_course(course_id: str):
     course = await database.get_course_by_id(course_id)
@@ -94,6 +105,19 @@ async def create_course(course: CourseCreate):
         course_dict["image_url"] = (
             f"https://placehold.co/400x200/transparent/white?text={course_dict['title'].replace(' ', '+')}&font=Poppins"
         )
+
+    # Generate tags using AI
+    try:
+        from utils.ai_tags import generate_course_tags
+
+        tags = generate_course_tags(
+            course_dict.get("title", ""), course_dict.get("description", "")
+        )
+        course_dict["tags"] = tags
+    except Exception as e:
+        logger.error(f"Failed to generate tags: {e}")
+        course_dict["tags"] = []
+
     course_id = await database.create_course(course_dict)
 
     # Trigger notification for new course

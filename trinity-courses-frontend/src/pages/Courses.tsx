@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, PlayCircle, X, Upload, Loader2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, PlayCircle, X, Upload, Loader2, Search } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'
@@ -19,11 +19,12 @@ export const Courses: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<any>(null)
   const [sortBy, setSortBy] = useState<string>('popular')
   const [sortOrder, setSortOrder] = useState<string>('desc')
+  const [searchQuery, setSearchQuery] = useState('')
   const queryClient = useQueryClient()
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ['courses'],
-    queryFn: api.getCourses,
+    queryFn: () => searchQuery.length >= 2 ? api.searchAdminCourses(searchQuery) : api.getCourses(),
   })
 
   const sortedCourses = useMemo(() => {
@@ -110,6 +111,17 @@ export const Courses: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold dark:text-white">Courses</h1>
         <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search courses..."
+              className="input-field w-48 lg:w-64"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          </div>
           <div className="flex items-center gap-2">
             <SortAsc className="w-4 h-4 text-gray-500" />
             <select

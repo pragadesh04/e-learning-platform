@@ -42,10 +42,13 @@ export const UserDashboard: React.FC = () => {
     enabled: activeTab === 'courses'
   })
 
-  const filteredCourses = allCourses?.filter((course: any) =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ['searchCourses', searchQuery],
+    queryFn: () => api.searchCourses(searchQuery),
+    enabled: activeTab === 'courses' && searchQuery.length >= 2
+  })
+
+  const displayedCourses = searchQuery.length >= 2 ? searchResults : allCourses
 
   const handleCourseClick = (courseId: string) => {
     navigate(`/course/${courseId}`)
@@ -249,15 +252,15 @@ export const UserDashboard: React.FC = () => {
               </div>
             </div>
 
-              {allCoursesLoading ? (
+              {searchQuery.length >= 2 ? searchLoading : allCoursesLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="skeleton h-48 rounded-xl" />
                 ))}
               </div>
-            ) : filteredCourses && filteredCourses.length > 0 ? (
+            ) : displayedCourses && displayedCourses.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredCourses.map((course: any) => {
+                {displayedCourses.map((course: any) => {
                   const statusBadge = getStatusBadge(course.id)
                   return (
                     <div

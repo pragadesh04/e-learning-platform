@@ -40,6 +40,7 @@ const AppContent: React.FC = () => {
         <Route path="/watch/:courseId" element={<VideoPlayer />} />
         <Route path="/my-registrations" element={<MyRegistrations />} />
         <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/inbox" element={<Inbox />} />
         <Route path="/*" element={<MainLayout />} />
       </Routes>
     </div>

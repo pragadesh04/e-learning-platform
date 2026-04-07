@@ -22,6 +22,7 @@ class CourseBase(BaseModel):
     registration_open: bool = True
     video_type: str = "none"
     videos: List[VideoItem] = []
+    tags: List[str] = []
 
 
 class CourseCreate(CourseBase):
