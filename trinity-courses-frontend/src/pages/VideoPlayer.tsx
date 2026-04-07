@@ -1,8 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { ArrowLeft, Play, Pause } from 'lucide-react'
+
+declare global {
+  interface Window {
+    YT: typeof YT
+    onYouTubeIframeAPIReady: () => void
+  }
+}
+
+const YT_URL = 'https://www.youtube.com/iframe_api'
 
 function extractVideoId(url: string): string {
   const patterns = [
@@ -16,13 +25,83 @@ function extractVideoId(url: string): string {
   return ''
 }
 
+function loadYouTubeAPI(): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.YT) {
+      resolve()
+      return
+    }
+    window.onYouTubeIframeAPIReady = () => resolve()
+    const script = document.createElement('script')
+    script.src = YT_URL
+    const firstScript = document.getElementsByTagName('script')[0]
+    firstScript.parentNode?.insertBefore(script, firstScript)
+  })
+}
+
 export const VideoPlayer: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const playerRef = useRef<any>(null)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const updateProgress = useMutation({
+    mutationFn: ({ videoId, timestamp }: { videoId: string; timestamp: number }) =>
+      api.updateVideoProgress(courseId!, videoId, timestamp),
+  })
+
+  const { data: progressData } = useQuery({
+    queryKey: ['videoProgress', courseId],
+    queryFn: () => api.getVideoProgress(courseId!),
+    enabled: !!courseId,
+    refetchInterval: 60000,
+  })
+
+  const syncProgress = useCallback(() => {
+    if (playerRef.current && playerRef.current.getCurrentTime && isPlaying) {
+      try {
+        const time = playerRef.current.getCurrentTime()
+        const videoId = extractVideoId(videos[currentVideoIndex]?.video_url || '')
+        setCurrentTime(time)
+        updateProgress.mutate({ videoId, timestamp: Math.floor(time) })
+      } catch (e) {
+        console.error('Error syncing progress:', e)
+      }
+    }
+  }, [isPlaying, currentVideoIndex, updateProgress, videos])
+
+  useEffect(() => {
+    loadYouTubeAPI()
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isPlaying && playerRef.current) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+      progressIntervalRef.current = setInterval(syncProgress, 120000)
+    } else {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+    }
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+    }
+  }, [isPlaying, syncProgress])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -56,10 +135,23 @@ export const VideoPlayer: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    if (videos && progressData?.progress && window.YT) {
+      const savedProgress = progressData.progress[videos[currentVideoIndex]?._id]
+      if (savedProgress && playerRef.current?.seekTo) {
+        try {
+          playerRef.current.seekTo(savedProgress.timestamp, true)
+        } catch (e) {
+          console.error('Error seeking:', e)
+        }
+      }
+    }
+  }, [videos, progressData, currentVideoIndex])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
       </div>
     )
   }
@@ -71,7 +163,7 @@ export const VideoPlayer: React.FC = () => {
           <h2 className="text-xl text-white mb-4">No videos available</h2>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-3 bg-primary text-white rounded-lg font-medium"
+            className="px-6 py-3 bg-white text-black rounded-lg font-medium"
           >
             Go Back
           </button>
@@ -83,13 +175,42 @@ export const VideoPlayer: React.FC = () => {
   const currentVideo = videos[currentVideoIndex]
   const videoId = extractVideoId(currentVideo.video_url)
 
+  const handlePlayerReady = (event: any) => {
+    playerRef.current = event.target
+    const savedProgress = progressData?.progress?.[currentVideo._id]
+    if (savedProgress?.timestamp) {
+      try {
+        event.target.seekTo(savedProgress.timestamp, true)
+      } catch (e) {
+        console.error('Error seeking to timestamp:', e)
+      }
+    }
+  }
+
+  const handlePlayerStateChange = (event: any) => {
+    const state = event.data
+    if (state === window.YT?.PlayerState?.PLAYING) {
+      setIsPlaying(true)
+    } else if (state === window.YT?.PlayerState?.PAUSED || state === window.YT?.PlayerState?.ENDED) {
+      setIsPlaying(false)
+      if (playerRef.current) {
+        try {
+          const time = playerRef.current.getCurrentTime()
+          setCurrentTime(time)
+        } catch (e) {}
+      }
+    }
+  }
+
   const handleNextVideo = () => {
+    syncProgress()
     if (currentVideoIndex < videos.length - 1) {
       setCurrentVideoIndex(currentVideoIndex + 1)
     }
   }
 
   const handlePrevVideo = () => {
+    syncProgress()
     if (currentVideoIndex > 0) {
       setCurrentVideoIndex(currentVideoIndex - 1)
     }
@@ -109,6 +230,12 @@ export const VideoPlayer: React.FC = () => {
     setTouchStart(null)
   }
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <div 
       className="min-h-screen bg-black flex flex-col lg:flex-row"
@@ -118,15 +245,19 @@ export const VideoPlayer: React.FC = () => {
       {/* Video Player */}
       <div className="flex-1 relative bg-black">
         <iframe
-          ref={iframeRef}
           key={videoId}
-          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&showinfo=0&cc_load_policy=0&controls=1&fs=1&playlist=${videoId}`}
+          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&showinfo=0&cc_load_policy=0&controls=1&fs=1&enablejsapi=1&origin=${window.location.origin}`}
           title={currentVideo.title}
           className="absolute inset-0 w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
           style={{ border: 'none' }}
         />
+        {currentTime > 0 && (
+          <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 text-white text-sm rounded-full">
+            {formatTime(currentTime)}
+          </div>
+        )}
       </div>
 
       {/* Video List Sidebar - Right */}
@@ -134,8 +265,11 @@ export const VideoPlayer: React.FC = () => {
         {/* Back Button */}
         <div className="p-3 border-b border-gray-800">
           <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-white hover:text-primary transition-colors"
+            onClick={() => {
+              syncProgress()
+              navigate(-1)
+            }}
+            className="flex items-center gap-2 text-white hover:text-gray-300 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
@@ -148,10 +282,13 @@ export const VideoPlayer: React.FC = () => {
             {videos.map((video: any, index: number) => (
               <button
                 key={index}
-                onClick={() => setCurrentVideoIndex(index)}
+                onClick={() => {
+                  syncProgress()
+                  setCurrentVideoIndex(index)
+                }}
                 className={`w-full flex items-start gap-3 p-2 rounded-lg text-left transition-colors ${
                   index === currentVideoIndex 
-                    ? 'bg-primary/20 border border-primary' 
+                    ? 'bg-white/20 border border-white' 
                     : 'hover:bg-gray-800 border border-transparent'
                 }`}
               >

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, PlayCircle, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Image, Clock, Calendar, Lock, Unlock, SortAsc, PlayCircle, X, Upload, Loader2 } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'
@@ -278,6 +278,9 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
   const [videoType, setVideoType] = useState(course?.video_type || 'none')
   const [videoUrls, setVideoUrls] = useState<string[]>(course?.videos?.map((v: any) => v.video_url) || [''])
   const [fetchingVideos, setFetchingVideos] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   useEffect(() => {
     setTitle(course?.title || '')
@@ -291,7 +294,34 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
     setDuration(course?.duration?.toString() || '')
     setVideoType(course?.video_type || 'none')
     setVideoUrls(course?.videos?.map((v: any) => v.video_url) || [''])
+    setSelectedFile(null)
+    setImagePreview(null)
   }, [course])
+
+  const handleImageUpload = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be under 2MB')
+      return
+    }
+    setSelectedFile(file)
+    const preview = URL.createObjectURL(file)
+    setImagePreview(preview)
+  }
+
+  const handleUploadToServer = async () => {
+    if (!selectedFile) return
+    setUploadingImage(true)
+    try {
+      const result = await api.uploadImage(selectedFile)
+      setImageUrl(result.url)
+      setSelectedFile(null)
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const addVideoUrl = () => {
     setVideoUrls([...videoUrls, ''])
@@ -472,21 +502,89 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
         
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Image URL (optional)
+            Course Image
           </label>
-          <div className="relative">
-            <Image className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="input-field pl-10"
-            />
+          <div className="space-y-3">
+            {/* Preview */}
+            {(imagePreview || imageUrl) && (
+              <div className="relative rounded-xl overflow-hidden">
+                <img
+                  src={imagePreview || imageUrl}
+                  alt="Preview"
+                  className="w-full h-40 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl('')
+                    setImagePreview(null)
+                    setSelectedFile(null)
+                  }}
+                  className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {/* Upload area */}
+            {!imagePreview && !imageUrl && (
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleImageUpload(file)
+                  }}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Click to upload image
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Max 2MB
+                  </p>
+                </label>
+              </div>
+            )}
+            {/* Upload button */}
+            {selectedFile && !imageUrl && (
+              <button
+                type="button"
+                onClick={handleUploadToServer}
+                disabled={uploadingImage}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+              >
+                {uploadingImage ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload to Server
+                  </>
+                )}
+              </button>
+            )}
+            {/* URL fallback */}
+            {(imageUrl && !imagePreview) && (
+              <div className="relative">
+                <Image className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="input-field pl-10"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Leave empty to use auto-generated placeholder
-          </p>
         </div>
 
         <div>

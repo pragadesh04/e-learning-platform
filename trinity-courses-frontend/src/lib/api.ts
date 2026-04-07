@@ -144,6 +144,22 @@ export const api = {
     return res.json()
   },
 
+  async updateVideoProgress(courseId: string, videoId: string, timestamp: number) {
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/${courseId}/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_id: videoId, timestamp }),
+    })
+    if (!res.ok) throw new Error('Failed to update progress')
+    return res.json()
+  },
+
+  async getVideoProgress(courseId: string) {
+    const res = await fetchWithAuth(`${API_BASE}/course-post-login/${courseId}/progress`)
+    if (!res.ok) throw new Error('Failed to get progress')
+    return res.json()
+  },
+
   // Admin endpoints
   async getStats() {
     const res = await fetchWithAuth(`${API_BASE}/stats`)
@@ -225,6 +241,49 @@ export const api = {
       body: JSON.stringify({ value }),
     })
     if (!res.ok) throw new Error('Failed to update config')
+    return res.json()
+  },
+
+  // Image upload
+  async uploadImage(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetchWithAuth(`${API_BASE}/upload/image`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) throw new Error('Failed to upload image')
+    return res.json()
+  },
+
+  // Inbox endpoints
+  async getInbox() {
+    const res = await fetchWithAuth(`${API_BASE}/inbox`)
+    if (!res.ok) throw new Error('Failed to fetch inbox')
+    return res.json()
+  },
+
+  async getUnreadCount() {
+    const res = await fetchWithAuth(`${API_BASE}/inbox/unread-count`)
+    if (!res.ok) throw new Error('Failed to fetch unread count')
+    return res.json()
+  },
+
+  async markInboxRead(messageId: string) {
+    const res = await fetchWithAuth(`${API_BASE}/inbox/${messageId}/read`, { method: 'PUT' })
+    if (!res.ok) throw new Error('Failed to mark as read')
+    return res.json()
+  },
+
+  async markAllInboxRead() {
+    const res = await fetchWithAuth(`${API_BASE}/inbox/read-all`, { method: 'PUT' })
+    if (!res.ok) throw new Error('Failed to mark all as read')
+    return res.json()
+  },
+
+  async deleteInboxMessage(messageId: string) {
+    const res = await fetchWithAuth(`${API_BASE}/inbox/${messageId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Failed to delete message')
     return res.json()
   },
 }

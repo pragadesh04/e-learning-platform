@@ -258,6 +258,17 @@ async def get_user_by_mobile(mobile: str):
     return user
 
 
+async def get_all_users():
+    db = await get_database()
+    users = []
+    cursor = db.users.find()
+    async for user in cursor:
+        user["id"] = str(user["_id"])
+        user["_id"] = str(user["_id"])
+        users.append(user)
+    return users
+
+
 async def get_user_by_id(user_id: str):
     db = await get_database()
     from bson import ObjectId
@@ -386,3 +397,84 @@ async def create_registration(registration_data: dict):
     registration_data["id"] = str(result.inserted_id)
     registration_data["_id"] = str(registration_data["_id"])
     return registration_data
+
+
+async def get_inbox_messages(user_id: str):
+    db = await get_database()
+    messages = []
+    try:
+        from bson import ObjectId
+
+        cursor = db.inbox.find({"user_id": user_id}).sort("created_at", -1)
+        async for msg in cursor:
+            msg["id"] = str(msg["_id"])
+            msg.pop("_id", None)
+            messages.append(msg)
+    except Exception as e:
+        print(f"Error fetching inbox: {e}")
+    return messages
+
+
+async def get_unread_count(user_id: str):
+    db = await get_database()
+    try:
+        from bson import ObjectId
+
+        count = await db.inbox.count_documents({"user_id": user_id, "is_read": False})
+        return count
+    except Exception as e:
+        print(f"Error getting unread count: {e}")
+        return 0
+
+
+async def create_inbox_message(message_data: dict):
+    db = await get_database()
+    from datetime import datetime
+    from bson import ObjectId
+
+    message_data["is_read"] = False
+    message_data["created_at"] = datetime.utcnow()
+    message_data["_id"] = ObjectId()
+    result = await db.inbox.insert_one(message_data)
+    message_data["id"] = str(result.inserted_id)
+    message_data["_id"] = str(message_data["_id"])
+    return message_data
+
+
+async def mark_inbox_read(message_id: str, user_id: str):
+    db = await get_database()
+    from bson import ObjectId
+
+    try:
+        result = await db.inbox.update_one(
+            {"_id": ObjectId(message_id), "user_id": user_id},
+            {"$set": {"is_read": True}},
+        )
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error marking as read: {e}")
+        return False
+
+
+async def mark_all_inbox_read(user_id: str):
+    db = await get_database()
+    try:
+        await db.inbox.update_many(
+            {"user_id": user_id, "is_read": False}, {"$set": {"is_read": True}}
+        )
+    except Exception as e:
+        print(f"Error marking all as read: {e}")
+
+
+async def delete_inbox_message(message_id: str, user_id: str):
+    db = await get_database()
+    from bson import ObjectId
+
+    try:
+        result = await db.inbox.delete_one(
+            {"_id": ObjectId(message_id), "user_id": user_id}
+        )
+        return result.deleted_count > 0
+    except Exception as e:
+        print(f"Error deleting message: {e}")
+        return False

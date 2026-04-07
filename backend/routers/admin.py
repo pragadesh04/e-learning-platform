@@ -7,6 +7,7 @@ import html
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from dotenv import load_dotenv
+
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(env_path)
 
@@ -84,6 +85,15 @@ async def create_course(course: CourseCreate):
             f"https://placehold.co/400x200/transparent/white?text={course_dict['title'].replace(' ', '+')}&font=Poppins"
         )
     course_id = await database.create_course(course_dict)
+
+    # Trigger notification for new course
+    try:
+        from utils.notifications import notify_new_course
+
+        await notify_new_course(course_id, course_dict.get("title", "New Course"))
+    except Exception as e:
+        logger.error(f"Failed to send notifications: {e}")
+
     return {"id": course_id, "message": "Course created successfully"}
 
 
@@ -93,10 +103,22 @@ async def update_course(course_id: str, course: CourseUpdate):
     if not existing:
         raise HTTPException(status_code=404, detail="Course not found")
 
+    old_videos = existing.get("videos", [])
     update_data = course.model_dump(exclude_unset=True)
     if update_data.get("image_url") == "":
         update_data["image_url"] = None
     await database.update_course(course_id, update_data)
+
+    # Check if new videos were added
+    new_videos = update_data.get("videos", [])
+    if new_videos and len(new_videos) > len(old_videos):
+        try:
+            from utils.notifications import notify_new_video
+
+            await notify_new_video(course_id, existing.get("title", "Course"))
+        except Exception as e:
+            logger.error(f"Failed to send video notifications: {e}")
+
     return {"message": "Course updated successfully"}
 
 
@@ -159,7 +181,9 @@ async def approve_registration(registration_id: str):
 
         reg = await database.get_registration_by_id(registration_id)
         print(f"[DEBUG] Registration after update: {reg}")
-        print(f"[DEBUG] telegram_id type: {type(reg.get('telegram_id'))}, value: {reg.get('telegram_id')}")
+        print(
+            f"[DEBUG] telegram_id type: {type(reg.get('telegram_id'))}, value: {reg.get('telegram_id')}"
+        )
 
         if reg.get("course_id"):
             try:
@@ -200,7 +224,9 @@ async def approve_registration(registration_id: str):
                 new_user = await database.create_user(user_data)
                 user_created = True
                 course_id_str = str(reg["course_id"]) if reg.get("course_id") else None
-                print(f"[DEBUG] course_id_str: {course_id_str}, type: {type(course_id_str)}")
+                print(
+                    f"[DEBUG] course_id_str: {course_id_str}, type: {type(course_id_str)}"
+                )
                 if course_id_str:
                     await database.add_course_access(new_user["id"], course_id_str)
             else:
@@ -212,8 +238,15 @@ async def approve_registration(registration_id: str):
         print(f"[DEBUG] About to notify admins for reg_id: {registration_id}")
         try:
             from utils.telegram import notify_all_admins
+
             user_name = reg.get("name", "Unknown")
-            await notify_all_admins(registration_id, "approved", approver_name="Dashboard", user_name=user_name, course_title=course_title)
+            await notify_all_admins(
+                registration_id,
+                "approved",
+                approver_name="Dashboard",
+                user_name=user_name,
+                course_title=course_title,
+            )
             print(f"[DEBUG] notify_all_admins completed")
         except Exception as e:
             print(f"[ERROR] notify_all_admins failed: {e}")
@@ -222,7 +255,7 @@ async def approve_registration(registration_id: str):
             course_type = reg.get("course_type", "recorded")
             start_date = reg.get("start_date")
             start_time = reg.get("start_time")
-            
+
             if course_type == "live":
                 timing = ""
                 if start_date:
@@ -232,9 +265,10 @@ async def approve_registration(registration_id: str):
                 message = f"✅ *Your registration is approved!*\n\n📚 *Course:* {course_title}{timing}\n\n📎 We'll send you the meeting link 1 hour before the class starts.\n\nLogin to access your course."
             else:
                 message = f"✅ *Your registration is approved!*\n\n📚 *Course:* {course_title}\n\n📱 *Login Credentials:*\nMobile: `{mobile}`\nPassword: `{password_display}`\n\nLogin to access your course."
-            
+
             try:
                 from utils.telegram import send_telegram_message
+
                 await send_telegram_message(telegram_id, message)
             except Exception as e:
                 print(f"[ERROR] Failed to send approval message to user: {e}")
@@ -262,15 +296,24 @@ async def reject_registration(registration_id: str, reason: str = None):
     course_title = reg.get("course_title", "the course")
 
     from utils.telegram import notify_all_admins
-    await notify_all_admins(registration_id, "rejected", reason=reason, approver_name="Dashboard", user_name=user_name, course_title=course_title)
+
+    await notify_all_admins(
+        registration_id,
+        "rejected",
+        reason=reason,
+        approver_name="Dashboard",
+        user_name=user_name,
+        course_title=course_title,
+    )
 
     telegram_id = reg.get("telegram_id")
     if telegram_id:
         rejection_text = f"Reason: {reason}" if reason else "No reason provided."
         message = f"❌ *Your registration has been rejected.*\n\n📚 *Course:* {course_title}\n\n{rejection_text}"
-        
+
         try:
             from utils.telegram import send_telegram_message
+
             await send_telegram_message(telegram_id, message)
         except Exception as e:
             print(f"[ERROR] Failed to send rejection message to user: {e}")
@@ -349,3 +392,38 @@ async def get_user_courses(user_id: str = Depends(decode_token)):
 
     courses = await database.get_user_courses(user_id)
     return courses
+
+
+@router.post("/upload/image")
+async def upload_image(
+    file: UploadFile = File(...), current_user: dict = Depends(get_current_user)
+):
+    """Upload course image to Cloudinary"""
+    if not current_user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        from utils.cloud_upload import upload_course_image
+        import tempfile
+        import os
+
+        contents = await file.read()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        try:
+            result = upload_course_image(tmp_path)
+            os.unlink(tmp_path)
+            return result
+        except Exception as e:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+            raise e
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Image upload error: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
