@@ -4,11 +4,16 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { ArrowLeft, Play, Pause } from 'lucide-react'
 
-declare global {
-  interface Window {
-    YT: typeof YT
-    onYouTubeIframeAPIReady: () => void
+declare const window: Window & typeof globalThis & {
+  YT?: {
+    Player: new (elementId: string, config: any) => any
+    PlayerState: {
+      PLAYING: number
+      PAUSED: number
+      ENDED: number
+    }
   }
+  onYouTubeIframeAPIReady?: () => void
 }
 
 const YT_URL = 'https://www.youtube.com/iframe_api'
@@ -45,10 +50,9 @@ export const VideoPlayer: React.FC = () => {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const playerRef = useRef<any>(null)
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const updateProgress = useMutation({
     mutationFn: ({ videoId, timestamp }: { videoId: string; timestamp: number }) =>
@@ -62,18 +66,32 @@ export const VideoPlayer: React.FC = () => {
     refetchInterval: 60000,
   })
 
+  const videosRef = useRef<any[]>([])
+  
+  const { data: videos, isLoading, error } = useQuery({
+    queryKey: ['courseVideos', courseId],
+    queryFn: () => api.getCourseVideos(courseId!),
+    enabled: !!courseId,
+  })
+
+  useEffect(() => {
+    if (videos) {
+      videosRef.current = videos
+    }
+  }, [videos])
+
   const syncProgress = useCallback(() => {
-    if (playerRef.current && playerRef.current.getCurrentTime && isPlaying) {
+    if (playerRef.current && playerRef.current.getCurrentTime) {
       try {
         const time = playerRef.current.getCurrentTime()
-        const videoId = extractVideoId(videos[currentVideoIndex]?.video_url || '')
+        const videoId = extractVideoId(videosRef.current[currentVideoIndex]?.video_url || '')
         setCurrentTime(time)
         updateProgress.mutate({ videoId, timestamp: Math.floor(time) })
       } catch (e) {
         console.error('Error syncing progress:', e)
       }
     }
-  }, [isPlaying, currentVideoIndex, updateProgress, videos])
+  }, [currentVideoIndex, updateProgress])
 
   useEffect(() => {
     loadYouTubeAPI()
@@ -85,23 +103,15 @@ export const VideoPlayer: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    if (isPlaying && playerRef.current) {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-      progressIntervalRef.current = setInterval(syncProgress, 120000)
-    } else {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-        progressIntervalRef.current = null
-      }
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
     }
     return () => {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
       }
     }
-  }, [isPlaying, syncProgress])
+  }, [syncProgress])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -110,12 +120,6 @@ export const VideoPlayer: React.FC = () => {
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
-
-  const { data: videos, isLoading, error } = useQuery({
-    queryKey: ['courseVideos', courseId],
-    queryFn: () => api.getCourseVideos(courseId!),
-    enabled: !!courseId,
-  })
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -175,33 +179,6 @@ export const VideoPlayer: React.FC = () => {
   const currentVideo = videos[currentVideoIndex]
   const videoId = extractVideoId(currentVideo.video_url)
 
-  const handlePlayerReady = (event: any) => {
-    playerRef.current = event.target
-    const savedProgress = progressData?.progress?.[currentVideo._id]
-    if (savedProgress?.timestamp) {
-      try {
-        event.target.seekTo(savedProgress.timestamp, true)
-      } catch (e) {
-        console.error('Error seeking to timestamp:', e)
-      }
-    }
-  }
-
-  const handlePlayerStateChange = (event: any) => {
-    const state = event.data
-    if (state === window.YT?.PlayerState?.PLAYING) {
-      setIsPlaying(true)
-    } else if (state === window.YT?.PlayerState?.PAUSED || state === window.YT?.PlayerState?.ENDED) {
-      setIsPlaying(false)
-      if (playerRef.current) {
-        try {
-          const time = playerRef.current.getCurrentTime()
-          setCurrentTime(time)
-        } catch (e) {}
-      }
-    }
-  }
-
   const handleNextVideo = () => {
     syncProgress()
     if (currentVideoIndex < videos.length - 1) {
@@ -242,7 +219,6 @@ export const VideoPlayer: React.FC = () => {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Video Player */}
       <div className="flex-1 relative bg-black">
         <iframe
           key={videoId}
@@ -260,9 +236,7 @@ export const VideoPlayer: React.FC = () => {
         )}
       </div>
 
-      {/* Video List Sidebar - Right */}
       <div className={`w-full lg:w-80 bg-gray-900 border-l border-gray-800 flex flex-col ${isFullscreen ? 'hidden' : ''}`}>
-        {/* Back Button */}
         <div className="p-3 border-b border-gray-800">
           <button
             onClick={() => {
@@ -276,7 +250,6 @@ export const VideoPlayer: React.FC = () => {
           </button>
         </div>
 
-        {/* Video List */}
         <div className="flex-1 overflow-y-auto p-3">
           <div className="space-y-2">
             {videos.map((video: any, index: number) => (

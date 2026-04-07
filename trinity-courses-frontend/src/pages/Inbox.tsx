@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { GlassCard } from '../components/GlassCard'
-import { Check, Trash2, BookOpen, Video, Bell, CheckCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Trash2, BookOpen, Video, Bell, CheckCheck } from 'lucide-react'
+
 
 interface InboxMessage {
   id: string
