@@ -135,7 +135,7 @@ export const CourseDetail: React.FC = () => {
             }`}>
               {course.registration_open ? 'Registration Open' : 'Registration Closed'}
             </span>
-            <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500 text-white">
+            <span className="px-3 py-1 text-sm font-medium rounded-full bg-black dark:bg-white text-white dark:text-black">
               {course.course_type === 'live' ? 'Live Course' : 'Recorded Course'}
             </span>
           </div>
@@ -215,6 +215,7 @@ export const CourseDetail: React.FC = () => {
                     <p className="text-xs text-gray-500">Full access</p>
                   </div>
                 </div>
+                {false && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                   <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">
                     <BadgeCheck className="w-5 h-5 text-black dark:text-white" />
@@ -224,6 +225,7 @@ export const CourseDetail: React.FC = () => {
                     <p className="text-xs text-gray-500">On completion</p>
                   </div>
                 </div>
+                )}
                 {course.sessions && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                     <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center">

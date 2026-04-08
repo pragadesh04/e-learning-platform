@@ -97,7 +97,6 @@ const MainLayout: React.FC = () => {
             <Route path="/courses" element={<Courses />} />
             <Route path="/registrations" element={<Registrations />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/inbox" element={<Inbox />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

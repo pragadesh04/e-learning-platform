@@ -83,7 +83,7 @@ export const Recommendations: React.FC = () => {
       {!isLoading && courses.length > 0 && (
         <>
           <div className="flex items-center gap-2 mb-4">
-            {recommendationType === 'ai_recommendations' && <Bot className="w-5 h-5 text-purple-500" />}
+            {recommendationType === 'ai_recommendations' && <Bot className="w-5 h-5 text-gray-500" />}
             <h2 className="text-xl font-semibold dark:text-white">{getTypeLabel(recommendationType)}</h2>
           </div>
           

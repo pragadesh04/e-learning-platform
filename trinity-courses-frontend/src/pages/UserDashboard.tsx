@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -20,6 +20,14 @@ export const UserDashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const { data: myCourses, isLoading: coursesLoading } = useQuery({
     queryKey: ['userCourses'],
@@ -43,12 +51,12 @@ export const UserDashboard: React.FC = () => {
   })
 
   const { data: searchResults, isLoading: searchLoading } = useQuery({
-    queryKey: ['searchCourses', searchQuery],
-    queryFn: () => api.searchCourses(searchQuery),
-    enabled: activeTab === 'courses' && searchQuery.length >= 2
+    queryKey: ['searchCourses', debouncedQuery],
+    queryFn: () => api.searchCourses(debouncedQuery),
+    enabled: activeTab === 'courses' && debouncedQuery.length >= 2
   })
 
-  const displayedCourses = searchQuery.length >= 2 ? searchResults : allCourses
+  const displayedCourses = debouncedQuery.length >= 2 ? searchResults : allCourses
 
   const handleCourseClick = (courseId: string) => {
     navigate(`/course/${courseId}`)
@@ -60,7 +68,7 @@ export const UserDashboard: React.FC = () => {
     navigate('/login')
   }
 
-  const getStatusIcon = (status: string) => {
+const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
         return <CheckCircle className="w-4 h-4 text-green-500" />
@@ -76,13 +84,13 @@ export const UserDashboard: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+        return 'bg-black dark:bg-white text-white dark:text-black'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+        return 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
       case 'rejected':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        return 'bg-gray-400 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
     }
   }
 
@@ -100,11 +108,11 @@ export const UserDashboard: React.FC = () => {
     if (!reg) return null
     switch (reg.status) {
       case 'approved':
-        return { bg: 'bg-green-500', text: 'text-white', label: 'Enrolled', icon: <CheckCircle className="w-3 h-3" /> }
+        return { bg: 'bg-black dark:bg-white', text: 'text-white dark:text-black', label: 'Enrolled', icon: <CheckCircle className="w-3 h-3" /> }
       case 'pending':
-        return { bg: 'bg-yellow-500', text: 'text-white', label: 'Pending', icon: <Clock3 className="w-3 h-3" /> }
+        return { bg: 'bg-gray-400 dark:bg-gray-500', text: 'text-white', label: 'Pending', icon: <Clock3 className="w-3 h-3" /> }
       case 'rejected':
-        return { bg: 'bg-red-500', text: 'text-white', label: 'Rejected', icon: <XCircle className="w-3 h-3" /> }
+        return { bg: 'bg-gray-600 dark:bg-gray-700', text: 'text-gray-300', label: 'Rejected', icon: <XCircle className="w-3 h-3" /> }
       default:
         return null
     }
@@ -131,10 +139,10 @@ export const UserDashboard: React.FC = () => {
                       <div
                         key={reg.id}
                         onClick={() => handleCourseClick(reg.course_id)}
-                        className="bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden border-2 border-green-200 dark:border-green-800"
+                        className="bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden border border-gray-200 dark:border-gray-700"
                       >
                         <div className="relative">
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+                          <div className="absolute top-2 left-2 px-2 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-medium rounded-full flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             Enrolled
                           </div>
@@ -178,8 +186,8 @@ export const UserDashboard: React.FC = () => {
                         onClick={() => handleCourseClick(course.id)}
                         className={`bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden border ${
                           isAlreadyRegistered 
-                            ? 'border-green-300 dark:border-green-700' 
-                            : 'border-gray-200 dark:border-gray-800 hover:border-primary'
+                            ? 'border-gray-400 dark:border-gray-600' 
+                            : 'border-gray-200 dark:border-gray-800'
                         }`}
                       >
                         <div className="relative">
@@ -189,16 +197,16 @@ export const UserDashboard: React.FC = () => {
                             className="w-full h-32 object-cover"
                           />
                           <div className="absolute top-2 right-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+<span className={`px-2 py-1 text-xs font-medium rounded-full ${
                               course.registration_open 
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                ? 'bg-green-500 text-white' 
+                                : 'bg-red-500 text-white'
                             }`}>
-                              {course.registration_open ? 'Open' : 'Closed'}
-                            </span>
+                            {course.registration_open ? 'Open' : 'Closed'}
+                          </span>
                           </div>
                           {isAlreadyRegistered && (
-                            <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+<div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" />
                               Enrolled
                             </div>
@@ -252,7 +260,7 @@ export const UserDashboard: React.FC = () => {
               </div>
             </div>
 
-              {searchQuery.length >= 2 ? searchLoading : allCoursesLoading ? (
+              {debouncedQuery.length >= 2 ? searchLoading : allCoursesLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="skeleton h-48 rounded-xl" />
@@ -267,9 +275,9 @@ export const UserDashboard: React.FC = () => {
                       key={course.id}
                       onClick={() => handleCourseClick(course.id)}
                       className={`bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden border ${
-                        statusBadge?.bg === 'bg-green-500' 
-                          ? 'border-green-300 dark:border-green-700' 
-                          : 'border-gray-200 dark:border-gray-800 hover:border-primary'
+                        statusBadge?.bg === 'bg-black dark:bg-white' 
+                          ? 'border-gray-400 dark:border-gray-600' 
+                          : 'border-gray-200 dark:border-gray-800'
                       }`}
                     >
                       <div className="relative">
@@ -356,11 +364,11 @@ export const UserDashboard: React.FC = () => {
                           {course.videos.length} videos
                         </span>
                       )}
-                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
-                        course.course_type === 'live' 
-                          ? 'bg-red-500 text-white' 
-                          : 'bg-blue-500 text-white'
-                      }`}>
+<span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
+                          course.course_type === 'live' 
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-gray-500 text-white'
+                        }`}>
                         {course.course_type === 'live' ? 'Live' : 'Recorded'}
                       </span>
                     </div>

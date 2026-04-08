@@ -185,9 +185,9 @@ export const Courses: React.FC = () => {
                 <span className={`absolute top-2 right-2 px-3 py-1 rounded-full text-xs font-medium ${
                   course.course_type === 'live' 
                     ? 'bg-red-500 text-white' 
-                    : 'bg-blue-500 text-white'
+                    : 'bg-black dark:bg-white text-white dark:text-black'
                 }`}>
-                  {course.course_type === 'live' ? '🔴 Live' : '📼 Recorded'}
+                  {course.course_type === 'live' ? 'Live' : 'Recorded'}
                 </span>
                 <span className={`absolute top-2 left-2 px-3 py-1 rounded-full text-xs font-medium ${
                   course.registration_open === false

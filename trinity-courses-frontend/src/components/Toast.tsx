@@ -6,21 +6,21 @@ const icons: Record<ToastType, React.ReactNode> = {
   success: <CheckCircle className="w-5 h-5 text-green-500" />,
   error: <XCircle className="w-5 h-5 text-red-500" />,
   warning: <AlertCircle className="w-5 h-5 text-yellow-500" />,
-  info: <Info className="w-5 h-5 text-blue-500" />,
+  info: <Info className="w-5 h-5 text-gray-500" />,
 }
 
 const bgColors: Record<ToastType, string> = {
   success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
   error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
   warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-  info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+  info: 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800',
 }
 
 const textColors: Record<ToastType, string> = {
   success: 'text-green-700 dark:text-green-400',
   error: 'text-red-700 dark:text-red-400',
   warning: 'text-yellow-700 dark:text-yellow-400',
-  info: 'text-blue-700 dark:text-blue-400',
+  info: 'text-gray-700 dark:text-gray-400',
 }
 
 interface ToastProps {

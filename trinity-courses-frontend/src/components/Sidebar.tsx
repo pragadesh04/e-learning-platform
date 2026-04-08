@@ -1,11 +1,9 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { LayoutDashboard, BookOpen, Users, Settings, LogOut, X, Bell } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, Settings, LogOut, X } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 import { useThemeStore } from '../store/themeStore'
-import { api } from '../lib/api'
 
 interface SidebarProps {
   isOpen?: boolean
@@ -17,19 +15,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   const navigate = useNavigate()
   const { isDark } = useThemeStore()
   
-  const { data: unreadData } = useQuery({
-    queryKey: ['unreadCount'],
-    queryFn: api.getUnreadCount,
-    refetchInterval: 60000,
-  })
-  
-  const unreadCount = unreadData?.unread_count || 0
-  
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/courses', icon: BookOpen, label: 'Courses' },
     { to: '/registrations', icon: Users, label: 'Registrations' },
-    { to: '/inbox', icon: Bell, label: 'Inbox', badge: unreadCount },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ]
 
@@ -79,13 +68,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         )}
 
         <nav className="flex-1 px-4">
-          {navItems.map(({ to, icon: Icon, label, badge }) => (
+          {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               onClick={handleNavClick}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all duration-300 relative ${
+                `flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all duration-300 ${
                   isActive
                     ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -94,11 +83,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             >
               <Icon className="w-5 h-5" />
               <span className="font-medium">{label}</span>
-              {badge && badge > 0 && (
-                <span className="absolute right-2 min-w-5 h-5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full px-1">
-                  {badge > 99 ? '99+' : badge}
-                </span>
-              )}
             </NavLink>
           ))}
         </nav>

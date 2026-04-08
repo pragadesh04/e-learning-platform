@@ -10,16 +10,19 @@ logger = logging.getLogger(__name__)
 
 
 async def notify_new_course(course_id: str, course_title: str):
-    """Notify users when a new course is launched - AI relevance based"""
+    """Notify users when a new course is launched"""
     try:
-        from langchain_mistralai import ChatMistralAI
-        from langchain_core.prompts import ChatPromptTemplate
-        import os
-    except ImportError:
-        logger.warning("LangChain not available, skipping AI notifications")
-        return
+        # Check if AI is available
+        use_ai = True
+        try:
+            from langchain_mistralai import ChatMistralAI
+            import os
 
-    try:
+            if not os.getenv("MISTRAL_API_KEY"):
+                use_ai = False
+        except ImportError:
+            use_ai = False
+
         all_users = await database.get_all_users()
         if not all_users:
             return
@@ -46,11 +49,27 @@ async def notify_new_course(course_id: str, course_title: str):
             logger.info("No users with registrations to notify")
             return
 
-        # Get all available courses for context
-        all_courses = await database.get_courses()
+        logger.info(
+            f"Notifying {len(users_to_notify)} users about new course: {course_title}"
+        )
 
-        logger.info(f"Checking AI relevance for {len(users_to_notify)} users")
+        # If AI not available, notify ALL users with registrations
+        if not use_ai:
+            for user_data in users_to_notify:
+                user_id = user_data["user"].get("id")
+                await database.create_inbox_message(
+                    {
+                        "user_id": user_id,
+                        "type": "new_course",
+                        "title": "New Course Launched!",
+                        "message": f"{course_title} - Check out our latest course!",
+                        "course_id": course_id,
+                    }
+                )
+            logger.info(f"Notified {len(users_to_notify)} users without AI")
+            return
 
+        # Continue with AI-based relevance check
         llm = ChatMistralAI(
             model="mistral-large-latest",
             api_key=os.getenv("MISTRAL_API_KEY"),
