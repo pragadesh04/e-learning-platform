@@ -47,6 +47,8 @@ Consider:
 - Related technologies or fields
 - Difficulty level (beginner, intermediate, advanced)
 - Industry or use cases
+- extract key words from the description
+- every tags should have exactly one words
 
 Return ONLY a comma-separated list of tags (no explanation).
 Example output: python, programming, beginner, data science, automation"""
