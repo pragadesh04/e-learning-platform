@@ -116,6 +116,13 @@ export const Login: React.FC = () => {
               Sign Up
             </Link>
           </p>
+
+          <p className="text-center mt-3 text-sm text-gray-500 dark:text-gray-400">
+            Forgot password?{' '}
+            <Link to="/forgot-password" className="text-black dark:text-white hover:underline font-medium">
+              Reset here
+            </Link>
+          </p>
         </div>
       </div>
     </div>

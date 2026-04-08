@@ -5,6 +5,7 @@ interface User {
   id: string
   mobile: string
   name: string
+  city?: string
   is_admin: boolean
   accessible_courses: string[]
 }
@@ -58,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (mobile: string, password: string) => {
     const response = await api.login(mobile, password)
     localStorage.setItem('token', response.access_token)
+    localStorage.setItem('user', JSON.stringify(response.user))
     setToken(response.access_token)
     setUser(response.user)
   }

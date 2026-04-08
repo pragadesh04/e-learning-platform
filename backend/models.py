@@ -91,6 +91,7 @@ class UserCreate(BaseModel):
     mobile: str
     password: str
     name: str
+    city: Optional[str] = None
     is_admin: bool = False
 
 
@@ -98,6 +99,7 @@ class UserResponse(BaseModel):
     id: str
     mobile: str
     name: str
+    city: Optional[str] = None
     is_admin: bool
     accessible_courses: List[str] = []
     created_at: Optional[datetime] = None

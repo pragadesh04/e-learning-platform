@@ -22,12 +22,12 @@ async def list_registrations(
     status: str = None,
     course: str = None,
     sort_by: str = None,
-    order: str = "desc"
+    order: str = "desc",
 ):
     """List all registrations (admin only)"""
     if not current_user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     return await database.get_registrations(status, course, sort_by, order)
 
 
@@ -43,34 +43,42 @@ async def get_my_registrations(current_user: dict = Depends(get_current_user)):
 async def create_registration(
     course_id: str = Form(...),
     name: str = Form(...),
-    address: str = Form(...),
-    mobile: str = Form(...),
+    city: str = Form(...),
     screenshot: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """Register for a course (web registration)"""
     course = await database.get_course_by_id(course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    
+
     if not course.get("registration_open", True):
-        raise HTTPException(status_code=400, detail="Registration is closed for this course")
-    
+        raise HTTPException(
+            status_code=400, detail="Registration is closed for this course"
+        )
+
     user_id = current_user["id"]
-    
+    user_mobile = current_user.get("mobile", "")
+
     # Check existing registration
     existing_reg = await database.get_user_registrations(user_id)
     for reg in existing_reg:
-        if reg.get("course_id") == course_id and reg.get("status") in ["pending", "approved"]:
-            raise HTTPException(status_code=400, detail="Already registered for this course")
-    
+        if reg.get("course_id") == course_id and reg.get("status") in [
+            "pending",
+            "approved",
+        ]:
+            raise HTTPException(
+                status_code=400, detail="Already registered for this course"
+            )
+
     # Upload screenshot to Cloudinary
     screenshot_url = None
     screenshot_public_id = None
     screenshot_uploaded_at = None
-    
+
     try:
         from utils.cloud_upload import upload_screenshot
+
         upload_result = upload_screenshot(screenshot.file)
         screenshot_url = upload_result["url"]
         screenshot_public_id = upload_result["public_id"]
@@ -79,12 +87,12 @@ async def create_registration(
         logger.error(f"Cloudinary upload failed: {e}")
         # If Cloudinary fails, we can still proceed without screenshot URL
         # But you might want to raise an error instead
-    
+
     registration_data = {
         "user_id": user_id,
         "name": name,
-        "address": address,
-        "mobile": mobile,
+        "address": city,
+        "mobile": user_mobile,
         "course_id": course_id,
         "course_title": course.get("title"),
         "amount": course.get("fee", 0),
@@ -93,34 +101,33 @@ async def create_registration(
         "screenshot_uploaded_at": screenshot_uploaded_at,
         "screenshot_expired": False,
         "status": "pending",
-        "source": "web"
+        "source": "web",
     }
-    
+
     registration = await database.create_registration(registration_data)
-    
+
     return {
         "message": "Registration submitted successfully. Awaiting approval.",
-        "registration": registration
+        "registration": registration,
     }
 
 
 @router.put("/{registration_id}/approve")
 async def approve_registration(
-    registration_id: str,
-    current_user: dict = Depends(get_current_user)
+    registration_id: str, current_user: dict = Depends(get_current_user)
 ):
     """Approve a registration (admin only)"""
     if not current_user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     await database.update_registration_status(registration_id, "approved")
     await database.increment_course_count(registration_id)
-    
+
     # Add course access to user
     reg = await database.get_registration_by_id(registration_id)
     if reg and reg.get("user_id"):
         await database.add_course_access(reg["user_id"], reg["course_id"])
-    
+
     return {"message": "Registration approved"}
 
 
@@ -128,11 +135,11 @@ async def approve_registration(
 async def reject_registration(
     registration_id: str,
     current_user: dict = Depends(get_current_user),
-    reason: str = None
+    reason: str = None,
 ):
     """Reject a registration (admin only)"""
     if not current_user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     await database.update_registration_status(registration_id, "rejected", reason)
     return {"message": "Registration rejected"}

@@ -69,11 +69,12 @@ export const api = {
     }
   },
 
-  async register(name: string, mobile: string, password: string) {
+  async register(name: string, mobile: string, password: string, city: string) {
     const formData = new FormData()
     formData.append('name', name)
     formData.append('mobile', mobile)
     formData.append('password', password)
+    formData.append('city', city)
     
     const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
       method: 'POST',
@@ -89,6 +90,51 @@ export const api = {
   async getMe() {
     const res = await fetchWithAuth(`${API_BASE}/auth/me`)
     if (!res.ok) throw new Error('Failed to get user')
+    return res.json()
+  },
+
+  async updateProfile(name: string, city: string) {
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('city', city)
+    const res = await fetchWithAuth(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to update profile' }))
+      throw new Error(err.detail || 'Failed to update profile')
+    }
+    return res.json()
+  },
+
+  async forgotPasswordSendOTP(mobile: string) {
+    const formData = new FormData()
+    formData.append('mobile', mobile)
+    const res = await fetchWithTimeout(`${API_BASE}/auth/forgot-password/send-otp`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to send OTP' }))
+      throw new Error(err.detail || 'Failed to send OTP')
+    }
+    return res.json()
+  },
+
+  async forgotPasswordReset(mobile: string, otp: string, newPassword: string) {
+    const formData = new FormData()
+    formData.append('mobile', mobile)
+    formData.append('otp', otp)
+    formData.append('new_password', newPassword)
+    const res = await fetchWithTimeout(`${API_BASE}/auth/forgot-password/reset`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to reset password' }))
+      throw new Error(err.detail || 'Failed to reset password')
+    }
     return res.json()
   },
 
@@ -137,12 +183,11 @@ export const api = {
     return res.json()
   },
 
-  async registerCourse(courseId: string, name: string, address: string, mobile: string, screenshot: File) {
+  async registerCourse(courseId: string, name: string, city: string, screenshot: File) {
     const formData = new FormData()
     formData.append('course_id', courseId)
     formData.append('name', name)
-    formData.append('address', address)
-    formData.append('mobile', mobile)
+    formData.append('city', city)
     formData.append('screenshot', screenshot)
     
     const res = await fetchWithAuth(`${API_BASE}/web`, {

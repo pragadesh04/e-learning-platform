@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { ArrowLeft, BookOpen, Clock, Users, Play, Calendar, CheckCircle, XCircle, Upload, BadgeCheck, AlertCircle } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { ArrowLeft, BookOpen, Clock, Users, Play, Calendar, CheckCircle, XCircle, Upload, BadgeCheck, AlertCircle, ArrowRight, Loader2 } from 'lucide-react'
 
 export const CourseDetail: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  
   const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [registerStep, setRegisterStep] = useState(1)
   const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
-  const [mobile, setMobile] = useState('')
+  const [city, setCity] = useState('')
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [registerError, setRegisterError] = useState('')
   const [registerSuccess, setRegisterSuccess] = useState(false)
@@ -39,7 +42,8 @@ export const CourseDetail: React.FC = () => {
   const registrationMutation = useMutation({
     mutationFn: () => {
       if (!screenshot) throw new Error('Please upload payment screenshot')
-      return api.registerCourse(courseId!, name, address, mobile, screenshot)
+      if (!city || !city.trim()) throw new Error('Please enter your city name')
+      return api.registerCourse(courseId!, name, city.trim(), screenshot)
     },
     onSuccess: () => {
       setRegisterSuccess(true)
@@ -51,12 +55,18 @@ export const CourseDetail: React.FC = () => {
   })
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      const user = JSON.parse(userStr)
+    if (user) {
       setName(user.name || '')
+      setCity(user.city || '')
     }
-  }, [])
+  }, [user])
+
+  useEffect(() => {
+    if (showRegisterModal) {
+      setRegisterStep(1)
+      setRegisterError('')
+    }
+  }, [showRegisterModal])
 
   const formatDuration = (hours: number | null | undefined) => {
     if (!hours) return null
@@ -67,10 +77,31 @@ export const CourseDetail: React.FC = () => {
     return `${h}h ${m}m`
   }
 
+  const handleNextStep = () => {
+    if (registerStep === 1) {
+      setRegisterStep(2)
+    } else if (registerStep === 2) {
+      if (!city || !city.trim()) {
+        setRegisterError('Please enter your city name')
+        return
+      }
+      setRegisterError('')
+      setRegisterStep(3)
+    }
+  }
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault()
     setRegisterError('')
     registrationMutation.mutate()
+  }
+
+  const handleCloseModal = () => {
+    setShowRegisterModal(false)
+    setRegisterSuccess(false)
+    setRegisterError('')
+    setScreenshot(null)
+    setRegisterStep(1)
   }
 
   const getStatusBadge = (status: string) => {
@@ -311,31 +342,58 @@ export const CourseDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Registration Modal */}
+      {/* Registration Modal - Step Wizard */}
       {showRegisterModal && !isRegistered && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold dark:text-white">Register for Course</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 md:p-6 w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold dark:text-white">Register for Course</h2>
               <button
-                onClick={() => {
-                  setShowRegisterModal(false)
-                  setRegisterSuccess(false)
-                  setRegisterError('')
-                }}
+                onClick={handleCloseModal}
                 className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <XCircle className="w-6 h-6 text-gray-400" />
               </button>
             </div>
 
-            {registerSuccess ? (
-              <div className="text-center py-8">
-                <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-green-500" />
+            {/* Step Indicator */}
+            <div className="flex items-center justify-center gap-2 mb-5">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                    registerStep >= step 
+                      ? 'bg-black dark:bg-white text-white dark:text-black' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {registerStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div className={`w-8 h-1 mx-1 rounded-full transition-all ${
+                      registerStep > step 
+                        ? 'bg-black dark:bg-white' 
+                        : 'bg-gray-200 dark:bg-gray-700'
+                    }`} />
+                  )}
                 </div>
-                <h3 className="text-xl font-bold dark:text-white mb-2">Registration Submitted!</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+              ))}
+            </div>
+
+            {/* Step Labels */}
+            <div className="flex justify-center gap-4 mb-5 text-xs text-gray-500 dark:text-gray-400">
+              <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Payment</span>
+              <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Details</span>
+              <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Upload</span>
+            </div>
+
+            {registerSuccess ? (
+              /* Success State */
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+                <h3 className="text-lg font-bold dark:text-white mb-2">Registration Submitted!</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-5">
                   Your registration is pending approval. We'll notify you once approved.
                 </p>
                 <button
@@ -343,132 +401,202 @@ export const CourseDetail: React.FC = () => {
                     setShowRegisterModal(false)
                     navigate('/my-registrations')
                   }}
-                  className="btn-primary"
+                  className="btn-primary w-full"
                 >
                   View My Registrations
                 </button>
               </div>
             ) : (
               <>
-                {qrData && (
-                  <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Scan QR code to pay <span className="font-bold text-black dark:text-white">₹{qrData.amount}</span>
-                    </p>
-                    <img 
-                      src={qrData.qr_code} 
-                      alt="Payment QR Code" 
-                      className="w-48 h-48 mx-auto rounded-xl"
-                    />
-                    <p className="text-xs text-gray-500 mt-3">
-                      UPI ID: <span className="font-mono">{qrData.upi_id}</span>
-                    </p>
+                {/* Step 1: Payment Info */}
+                {registerStep === 1 && (
+                  <div className="space-y-4">
+                    {!qrData ? (
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                        <div className="animate-pulse">
+                          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-32 mx-auto mb-3"></div>
+                          <div className="w-40 h-40 bg-gray-300 dark:bg-gray-600 rounded-xl mx-auto mb-3"></div>
+                          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-40 mx-auto"></div>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Loading payment details...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            Scan QR code to pay
+                          </p>
+                          <p className="text-3xl font-bold text-black dark:text-white mb-3">₹{qrData.amount}</p>
+                          <img 
+                            src={qrData.qr_code} 
+                            alt="Payment QR Code" 
+                            className="w-40 h-40 mx-auto rounded-xl"
+                          />
+                          <p className="text-xs text-gray-500 mt-3">
+                            UPI ID: <span className="font-mono">{qrData.upi_id}</span>
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-sm text-blue-700 dark:text-blue-300">
+                          <p className="font-medium mb-1">📱 How to Pay:</p>
+                          <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                            <li>Open your UPI app (Google Pay, PhonePe, Paytm, etc.)</li>
+                            <li>Scan the QR code above</li>
+                            <li>Pay ₹{qrData.amount}</li>
+                            <li>Take a screenshot of payment confirmation</li>
+                          </ol>
+                        </div>
+                      </>
+                    )}
+
+                    {qrData && (
+                      <button
+                        onClick={handleNextStep}
+                        className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+                      >
+                        Done, Next <ArrowRight className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 )}
 
-                <form onSubmit={handleRegister} className="space-y-4">
-                  {registerError && (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
-                      {registerError}
+                {/* Step 2: Details */}
+                {registerStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm">
+                      <p className="text-gray-500 dark:text-gray-400 mb-2">Your Details</p>
+                      <p className="font-medium dark:text-white">{name}</p>
+                      <p className="text-xs text-gray-400">Name from your account</p>
+                      {city && (
+                        <>
+                          <p className="font-medium dark:text-white mt-2">{city}</p>
+                          <p className="text-xs text-gray-400">City from your account</p>
+                        </>
+                      )}
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="input-field"
-                      placeholder="Enter your full name"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Address
-                    </label>
-                    <textarea
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="input-field"
-                      placeholder="Enter your address"
-                      rows={2}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Mobile Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      className="input-field"
-                      placeholder="Enter your mobile number"
-                      pattern="[0-9]{10,}"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Payment Screenshot
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
-                        className="hidden"
-                        id="screenshot-upload"
-                      />
-                      <label htmlFor="screenshot-upload" className="cursor-pointer">
-                        {screenshot ? (
-                          <div className="flex items-center justify-center gap-3">
-                            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-6 h-6 text-green-500" />
-                            </div>
-                            <div className="text-left">
-                              <p className="font-medium dark:text-white">{screenshot.name}</p>
-                              <p className="text-xs text-gray-500">Click to change</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-2">
-                            <Upload className="w-10 h-10 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Click to upload payment screenshot
-                              </p>
-                              <p className="text-xs text-gray-400 mt-1">JPG, PNG up to 10MB</p>
-                            </div>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={registrationMutation.isPending || !screenshot}
-                    className="btn-primary w-full py-4"
-                  >
-                    {registrationMutation.isPending ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                        Submitting...
-                      </span>
-                    ) : (
-                      'Submit Registration'
+                    {!city && (
+                      <div>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => {
+                            setCity(e.target.value)
+                            setRegisterError('')
+                          }}
+                          className="input-field"
+                          placeholder="Enter your city name"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">City is required for course certificates</p>
+                      </div>
                     )}
-                  </button>
-                </form>
+
+                    {registerError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                        {registerError}
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl text-sm text-yellow-700 dark:text-yellow-300">
+                      💡 Tip: You can close this popup and come back later to upload the screenshot
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setRegisterStep(1)}
+                        className="btn-secondary flex-1 py-3"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleNextStep}
+                        className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
+                      >
+                        Next <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Upload Screenshot */}
+                {registerStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="text-center mb-4">
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        Upload your payment screenshot to complete registration
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setScreenshot(e.target.files?.[0] || null)
+                            setRegisterError('')
+                          }}
+                          className="hidden"
+                          id="screenshot-upload"
+                        />
+                        <label htmlFor="screenshot-upload" className="cursor-pointer">
+                          {screenshot ? (
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-8 h-8 text-green-500" />
+                              </div>
+                              <div>
+                                <p className="font-medium dark:text-white">{screenshot.name}</p>
+                                <p className="text-xs text-gray-500">Click to change</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <Upload className="w-10 h-10 text-gray-400" />
+                              <div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Tap to upload payment screenshot
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">JPG, PNG up to 10MB</p>
+                              </div>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    {registerError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                        {registerError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setRegisterStep(2)}
+                        disabled={registrationMutation.isPending}
+                        className="btn-secondary flex-1 py-3"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleRegister}
+                        disabled={registrationMutation.isPending || !screenshot}
+                        className="btn-primary flex-1 py-3"
+                      >
+                        {registrationMutation.isPending ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Submitting...
+                          </span>
+                        ) : (
+                          'Register Now'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

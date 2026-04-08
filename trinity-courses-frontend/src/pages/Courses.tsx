@@ -233,14 +233,21 @@ export const Courses: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => toggleRegistrationMutation.mutate(course.id)}
+                  disabled={toggleRegistrationMutation.isPending}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-colors ${
                     course.registration_open === false
                       ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
                       : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
-                  }`}
+                  } ${toggleRegistrationMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {course.registration_open === false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                  {course.registration_open === false ? 'Open' : 'Close'}
+                  {toggleRegistrationMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : course.registration_open === false ? (
+                    <Unlock className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                  {toggleRegistrationMutation.isPending ? 'Updating...' : course.registration_open === false ? 'Open' : 'Close'}
                 </button>
                 <button
                   onClick={() => handleEdit(course)}

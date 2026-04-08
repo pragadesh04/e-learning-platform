@@ -7,6 +7,7 @@ import { Eye, EyeOff, UserPlus, Sun, Moon } from 'lucide-react'
 export const Signup: React.FC = () => {
   const [name, setName] = useState('')
   const [mobile, setMobile] = useState('')
+  const [city, setCity] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -32,7 +33,7 @@ export const Signup: React.FC = () => {
     setIsLoading(true)
 
     try {
-      const result = await api.register(name, mobile, password)
+      const result = await api.register(name, mobile, password, city)
       localStorage.setItem('token', result.access_token)
       localStorage.setItem('user', JSON.stringify(result.user))
       navigate('/courses')
@@ -80,6 +81,20 @@ export const Signup: React.FC = () => {
                   onChange={(e) => setName(e.target.value)}
                   className="input-field dark:bg-gray-800 dark:text-white dark:border-gray-700"
                   placeholder="Enter your full name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="input-field dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                  placeholder="Enter your city name"
                   required
                 />
               </div>

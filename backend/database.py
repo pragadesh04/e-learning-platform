@@ -526,3 +526,60 @@ async def delete_inbox_message(message_id: str, user_id: str):
     except Exception as e:
         print(f"Error deleting message: {e}")
         return False
+
+
+async def update_user(user_id: str, updates: dict):
+    """Update user fields (name, city)"""
+    db = await get_database()
+    from bson import ObjectId
+
+    try:
+        result = await db.users.update_one(
+            {"_id": ObjectId(user_id)}, {"$set": updates}
+        )
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error updating user: {e}")
+        return False
+
+
+async def store_otp(mobile: str, otp: str):
+    """Store OTP with 3-minute expiry"""
+    db = await get_database()
+    from datetime import datetime, timedelta
+
+    expiry = datetime.utcnow() + timedelta(minutes=3)
+
+    try:
+        await db.otps.update_one(
+            {"mobile": mobile},
+            {"$set": {"otp": otp, "expires_at": expiry}},
+            upsert=True,
+        )
+        return True
+    except Exception as e:
+        print(f"Error storing OTP: {e}")
+        return False
+
+
+async def verify_otp(mobile: str, otp: str) -> bool:
+    """Verify OTP and delete if valid"""
+    db = await get_database()
+    from datetime import datetime
+
+    try:
+        otp_record = await db.otps.find_one({"mobile": mobile, "otp": otp})
+
+        if not otp_record:
+            return False
+
+        expires_at = otp_record.get("expires_at")
+        if expires_at and datetime.utcnow() > expires_at:
+            await db.otps.delete_one({"mobile": mobile})
+            return False
+
+        await db.otps.delete_one({"mobile": mobile})
+        return True
+    except Exception as e:
+        print(f"Error verifying OTP: {e}")
+        return False

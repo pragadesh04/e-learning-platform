@@ -8,6 +8,7 @@ import { Registrations } from './pages/Registrations'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
+import { ForgotPassword } from './pages/ForgotPassword'
 import { UserDashboard } from './pages/UserDashboard'
 import { VideoPlayer } from './pages/VideoPlayer'
 import { CourseDetail } from './pages/CourseDetail'
@@ -36,6 +37,7 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/course/:courseId" element={<CourseDetail />} />
         <Route path="/watch/:courseId" element={<VideoPlayer />} />
         <Route path="/my-registrations" element={<MyRegistrations />} />
