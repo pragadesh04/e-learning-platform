@@ -1,3 +1,22 @@
+export interface SessionSchedule {
+  session_number: number
+  date?: string
+  time?: string
+  meeting_link?: string
+}
+
+export interface AccessDurations {
+  three_months?: number
+  six_months?: number
+  lifetime?: number
+}
+
+export interface Video {
+  video_url: string
+  title: string
+  thumbnail_url: string
+}
+
 export interface Course {
   _id: string
   title: string
@@ -15,12 +34,9 @@ export interface Course {
   registration_open: boolean
   video_type: string
   videos: Video[]
-}
-
-export interface Video {
-  video_url: string
-  title: string
-  thumbnail_url: string
+  tags?: string[]
+  session_schedules?: SessionSchedule[]
+  access_durations?: AccessDurations
 }
 
 export interface Registration {

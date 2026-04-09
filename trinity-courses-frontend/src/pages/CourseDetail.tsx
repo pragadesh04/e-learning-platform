@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { ArrowLeft, BookOpen, Clock, Users, Play, Calendar, CheckCircle, XCircle, Upload, BadgeCheck, AlertCircle, ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, Clock, Users, Play, CheckCircle, XCircle, Upload, BadgeCheck, AlertCircle, ArrowRight, Loader2, Video, ExternalLink } from 'lucide-react'
 
 export const CourseDetail: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>()
@@ -75,6 +75,31 @@ export const CourseDetail: React.FC = () => {
     if (h === 0) return `${m} min`
     if (m === 0) return `${h}h`
     return `${h}h ${m}m`
+  }
+
+  const isSessionPast = (session: any) => {
+    if (!session.date) return false
+    const sessionDateTime = new Date(`${session.date}T${session.time || '00:00'}`)
+    const sessionEndTime = new Date(sessionDateTime.getTime() + (course.duration || 0) * 60 * 60 * 1000)
+    return new Date() > sessionEndTime
+  }
+
+  const formatSessionDateTime = (session: any) => {
+    if (!session.date) return 'Date TBD'
+    const date = new Date(session.date)
+    const formattedDate = date.toLocaleDateString('en-IN', { 
+      weekday: 'short', 
+      day: 'numeric', 
+      month: 'short' 
+    })
+    const formattedTime = session.time 
+      ? new Date(`2000-01-01T${session.time}`).toLocaleTimeString('en-IN', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        })
+      : 'Time TBD'
+    return `${formattedDate} at ${formattedTime}`
   }
 
   const handleNextStep = () => {
@@ -193,7 +218,7 @@ export const CourseDetail: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
                   <p className="font-semibold dark:text-white">
                     {course.course_type === 'live' 
-                      ? `${course.sessions} Sessions` 
+                      ? `${course.sessions || 0} Sessions` 
                       : formatDuration(course.duration) || 'N/A'}
                   </p>
                 </div>
@@ -207,29 +232,138 @@ export const CourseDetail: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
                   <p className="font-semibold dark:text-white capitalize">{course.course_type}</p>
                 </div>
-                {course.start_date && (
-                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <Calendar className="w-5 h-5 text-black dark:text-white mb-2" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Start Date</p>
-                    <p className="font-semibold dark:text-white">{course.start_date}</p>
-                  </div>
-                )}
-                {course.start_time && (
+                {course.duration && course.course_type === 'live' && (
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                     <Clock className="w-5 h-5 text-black dark:text-white mb-2" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Start Time</p>
-                    <p className="font-semibold dark:text-white">{course.start_time}</p>
-                  </div>
-                )}
-                {course.sessions && (
-                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <Play className="w-5 h-5 text-black dark:text-white mb-2" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Sessions</p>
-                    <p className="font-semibold dark:text-white">{course.sessions}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Per Session</p>
+                    <p className="font-semibold dark:text-white">{formatDuration(course.duration)}</p>
                   </div>
                 )}
               </div>
+
+              {/* Access Duration Options for Recorded Courses */}
+              {course.course_type === 'recorded' && course.access_durations && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Available Access Options</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {course.access_durations.three_months > 0 && (
+                      <span className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                        <span className="font-medium dark:text-white">3 Months</span>
+                        <span className="text-gray-500 dark:text-gray-400 ml-2">₹{course.access_durations.three_months}</span>
+                      </span>
+                    )}
+                    {course.access_durations.six_months > 0 && (
+                      <span className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                        <span className="font-medium dark:text-white">6 Months</span>
+                        <span className="text-gray-500 dark:text-gray-400 ml-2">₹{course.access_durations.six_months}</span>
+                      </span>
+                    )}
+                    {course.access_durations.lifetime > 0 && (
+                      <span className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                        <span className="font-medium dark:text-white">Lifetime</span>
+                        <span className="text-gray-500 dark:text-gray-400 ml-2">₹{course.access_durations.lifetime}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Session Schedule for Live Courses (Public View) */}
+            {course.course_type === 'live' && course.session_schedules && course.session_schedules.length > 0 && !isRegistered && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                <h2 className="text-xl font-bold dark:text-white mb-4">Session Schedule</h2>
+                <div className="space-y-3">
+                  {course.session_schedules.map((session: any) => (
+                    <div key={session.session_number} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-black dark:bg-white flex items-center justify-center">
+                          <span className="text-sm font-bold text-white dark:text-black">{session.session_number}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium dark:text-white">Session {session.session_number}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatSessionDateTime(session)}
+                          </p>
+                        </div>
+                      </div>
+                      {isSessionPast(session) ? (
+                        <span className="text-sm text-gray-400">Ended</span>
+                      ) : session.meeting_link ? (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Link available after enrollment</span>
+                      ) : (
+                        <span className="text-sm text-yellow-600 dark:text-yellow-400">Link coming soon</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sessions for Enrolled Users */}
+            {course.course_type === 'live' && course.session_schedules && course.session_schedules.length > 0 && isRegistered && myRegistration?.status === 'approved' && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                <h2 className="text-xl font-bold dark:text-white mb-4">Your Sessions</h2>
+                <div className="space-y-3">
+                  {course.session_schedules.map((session: any) => {
+                    const past = isSessionPast(session)
+                    const hasLink = !!session.meeting_link
+                    return (
+                      <div 
+                        key={session.session_number} 
+                        className={`flex items-center justify-between p-4 rounded-xl ${
+                          past 
+                            ? 'bg-gray-100 dark:bg-gray-800/50 opacity-60' 
+                            : 'bg-gray-50 dark:bg-gray-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            past 
+                              ? 'bg-gray-300 dark:bg-gray-700' 
+                              : 'bg-black dark:bg-white'
+                          }`}>
+                            <span className={`text-lg font-bold ${
+                              past 
+                                ? 'text-gray-500 dark:text-gray-400' 
+                                : 'text-white dark:text-black'
+                            }`}>
+                              {session.session_number}
+                            </span>
+                          </div>
+                          <div>
+                            <p className={`font-medium ${past ? 'text-gray-500 dark:text-gray-400' : 'dark:text-white'}`}>
+                              Session {session.session_number}
+                            </p>
+                            <p className={`text-sm ${past ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {formatSessionDateTime(session)}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          {past ? (
+                            <span className="text-sm text-gray-400">Session Ended</span>
+                          ) : hasLink ? (
+                            <button
+                              onClick={() => navigate(`/course/${courseId}/session/${session.session_number}`)}
+                              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                            >
+                              Join Class
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div className="text-right">
+                              <span className="text-sm text-yellow-600 dark:text-yellow-400 block">Link coming soon</span>
+                              <span className="text-xs text-gray-400">Will be added 1 hour before</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* What's Included */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
@@ -298,9 +432,19 @@ export const CourseDetail: React.FC = () => {
                     {myRegistration.status === 'approved' && (
                       <button
                         onClick={() => navigate(`/watch/${courseId}`)}
-                        className="btn-primary w-full mt-3"
+                        className="btn-primary w-full mt-3 flex items-center justify-center gap-2"
                       >
-                        Start Learning
+                        {course.course_type === 'live' ? (
+                          <>
+                            <Video className="w-5 h-5" />
+                            View Sessions
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-5 h-5" />
+                            Start Learning
+                          </>
+                        )}
                       </button>
                     )}
                     {myRegistration.status === 'pending' && (

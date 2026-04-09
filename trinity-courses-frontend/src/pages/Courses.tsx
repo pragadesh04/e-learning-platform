@@ -295,6 +295,13 @@ interface CourseModalProps {
   isLoading: boolean
 }
 
+interface SessionScheduleInput {
+  session_number: number
+  date: string
+  time: string
+  meeting_link: string
+}
+
 const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSubmit, isLoading }) => {
   const [title, setTitle] = useState(course?.title || '')
   const [description, setDescription] = useState(course?.description || '')
@@ -311,6 +318,20 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
   const [uploadingImage, setUploadingImage] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [sessionSchedules, setSessionSchedules] = useState<SessionScheduleInput[]>(course?.session_schedules?.length > 0 
+    ? course.session_schedules.map((s: any) => ({
+        session_number: s.session_number,
+        date: s.date || '',
+        time: s.time || '',
+        meeting_link: s.meeting_link || ''
+      })) 
+    : [{ session_number: 1, date: '', time: '', meeting_link: '' }]
+  )
+  const [accessDurations, setAccessDurations] = useState({
+    three_months: course?.access_durations?.three_months?.toString() || '0',
+    six_months: course?.access_durations?.six_months?.toString() || '0',
+    lifetime: course?.access_durations?.lifetime?.toString() || '0'
+  })
 
   useEffect(() => {
     setTitle(course?.title || '')
@@ -326,6 +347,20 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
     setVideoUrls(course?.videos?.map((v: any) => v.video_url) || [''])
     setSelectedFile(null)
     setImagePreview(null)
+    setSessionSchedules(course?.session_schedules?.length > 0 
+      ? course.session_schedules.map((s: any) => ({
+          session_number: s.session_number,
+          date: s.date || '',
+          time: s.time || '',
+          meeting_link: s.meeting_link || ''
+        })) 
+      : [{ session_number: 1, date: '', time: '', meeting_link: '' }]
+    )
+    setAccessDurations({
+      three_months: course?.access_durations?.three_months?.toString() || '0',
+      six_months: course?.access_durations?.six_months?.toString() || '0',
+      lifetime: course?.access_durations?.lifetime?.toString() || '0'
+    })
   }, [course])
 
   const handleImageUpload = async (file: File) => {
@@ -367,6 +402,26 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
     setVideoUrls(updated)
   }
 
+  const addSession = () => {
+    setSessionSchedules([...sessionSchedules, {
+      session_number: sessionSchedules.length + 1,
+      date: '',
+      time: '',
+      meeting_link: ''
+    }])
+  }
+
+  const removeSession = (index: number) => {
+    const updated = sessionSchedules.filter((_, i) => i !== index)
+    setSessionSchedules(updated.map((s, i) => ({ ...s, session_number: i + 1 })))
+  }
+
+  const updateSession = (index: number, field: keyof SessionScheduleInput, value: string) => {
+    const updated = [...sessionSchedules]
+    updated[index] = { ...updated[index], [field]: value }
+    setSessionSchedules(updated)
+  }
+
   const fetchVideoInfo = async () => {
     const urls = videoUrls.filter(url => url.trim() !== '')
     if (urls.length === 0) return
@@ -399,6 +454,23 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
       }
     }
 
+    const filteredSchedules = courseType === 'live' 
+      ? sessionSchedules.filter(s => s.date || s.time).map(s => ({
+          session_number: s.session_number,
+          date: s.date || undefined,
+          time: s.time || undefined,
+          meeting_link: s.meeting_link || undefined
+        }))
+      : undefined
+
+    const filteredAccessDurations = courseType === 'recorded'
+      ? {
+          three_months: parseFloat(accessDurations.three_months) || undefined,
+          six_months: parseFloat(accessDurations.six_months) || undefined,
+          lifetime: parseFloat(accessDurations.lifetime) || undefined
+        }
+      : undefined
+
     onSubmit({
       title,
       description,
@@ -411,6 +483,8 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
       duration: courseType === 'live' && duration ? parseFloat(duration) : undefined,
       video_type: videoType,
       videos: videos.length > 0 ? videos : undefined,
+      session_schedules: filteredSchedules,
+      access_durations: filteredAccessDurations,
     })
   }
 
@@ -477,55 +551,142 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
         </div>
 
         {courseType === 'live' && (
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="input-field"
-              />
+          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Duration per session (hours)
+                </label>
+                <input
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="0.5"
+                  placeholder="e.g., 1.5"
+                />
+              </div>
             </div>
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Time
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="input-field"
-              />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Session Schedules
+                </label>
+                <button
+                  type="button"
+                  onClick={addSession}
+                  className="flex items-center gap-1 text-sm text-black dark:text-white hover:text-black dark:hover:text-white/80"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Session
+                </button>
+              </div>
+              <div className="space-y-3">
+                {sessionSchedules.map((session, index) => (
+                  <div key={index} className="p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Session {session.session_number}
+                      </span>
+                      {sessionSchedules.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSession(index)}
+                          className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <input
+                          type="date"
+                          value={session.date}
+                          onChange={(e) => updateSession(index, 'date', e.target.value)}
+                          className="input-field text-sm"
+                          placeholder="Date"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="time"
+                          value={session.time}
+                          onChange={(e) => updateSession(index, 'time', e.target.value)}
+                          className="input-field text-sm"
+                          placeholder="Time"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="url"
+                          value={session.meeting_link}
+                          onChange={(e) => updateSession(index, 'meeting_link', e.target.value)}
+                          className="input-field text-sm"
+                          placeholder="Google Meet URL"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Sessions (count)
-              </label>
-              <input
-                type="number"
-                value={sessions}
-                onChange={(e) => setSessions(e.target.value)}
-                className="input-field"
-                min="1"
-                placeholder="e.g., 3"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Duration (hours)
-              </label>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                className="input-field"
-                min="0"
-                step="0.5"
-                placeholder="e.g., 1.5"
-              />
+          </div>
+        )}
+
+        {courseType === 'recorded' && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Access Duration Pricing
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+              Set price for each duration. Leave as 0 if not offering that duration.
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  3 Months (₹)
+                </label>
+                <input
+                  type="number"
+                  value={accessDurations.three_months}
+                  onChange={(e) => setAccessDurations({ ...accessDurations, three_months: e.target.value })}
+                  className="input-field"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  6 Months (₹)
+                </label>
+                <input
+                  type="number"
+                  value={accessDurations.six_months}
+                  onChange={(e) => setAccessDurations({ ...accessDurations, six_months: e.target.value })}
+                  className="input-field"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Lifetime (₹)
+                </label>
+                <input
+                  type="number"
+                  value={accessDurations.lifetime}
+                  onChange={(e) => setAccessDurations({ ...accessDurations, lifetime: e.target.value })}
+                  className="input-field"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+              </div>
             </div>
           </div>
         )}

@@ -125,6 +125,16 @@ async def delete_course(course_id: str):
     db = await get_database()
     from bson import ObjectId
 
+    # Cascade delete: Remove registrations for this course
+    await db.registrations.delete_many({"course_id": course_id})
+
+    # Cascade delete: Remove course from all users' accessible_courses
+    await db.users.update_many(
+        {},
+        {"$pull": {"accessible_courses": course_id}}
+    )
+
+    # Delete the course
     await db.courses.delete_one({"_id": ObjectId(course_id)})
 
 

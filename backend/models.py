@@ -9,6 +9,19 @@ class VideoItem(BaseModel):
     thumbnail_url: str
 
 
+class SessionSchedule(BaseModel):
+    session_number: int
+    date: Optional[str] = None
+    time: Optional[str] = None
+    meeting_link: Optional[str] = None
+
+
+class AccessDurations(BaseModel):
+    three_months: Optional[float] = 0
+    six_months: Optional[float] = 0
+    lifetime: Optional[float] = 0
+
+
 class CourseBase(BaseModel):
     title: str
     description: str
@@ -23,6 +36,8 @@ class CourseBase(BaseModel):
     video_type: str = "none"
     videos: List[VideoItem] = []
     tags: List[str] = []
+    session_schedules: Optional[List[SessionSchedule]] = []
+    access_durations: Optional[AccessDurations] = None
 
 
 class CourseCreate(CourseBase):
@@ -42,6 +57,9 @@ class CourseUpdate(BaseModel):
     registration_open: Optional[bool] = None
     video_type: Optional[str] = None
     videos: Optional[List[VideoItem]] = None
+    tags: Optional[List[str]] = None
+    session_schedules: Optional[List[SessionSchedule]] = None
+    access_durations: Optional[AccessDurations] = None
 
 
 class CourseResponse(CourseBase):

@@ -15,6 +15,7 @@ import { CourseDetail } from './pages/CourseDetail'
 import { MyRegistrations } from './pages/MyRegistrations'
 import { Recommendations } from './pages/Recommendations'
 import { Inbox } from './pages/Inbox'
+import { LiveSession } from './pages/LiveSession'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useThemeStore } from './store/themeStore'
 import { ToastContainer } from './components/Toast'
@@ -39,6 +40,7 @@ const AppContent: React.FC = () => {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/course/:courseId" element={<CourseDetail />} />
+        <Route path="/course/:courseId/session/:sessionNumber" element={<LiveSession />} />
         <Route path="/watch/:courseId" element={<VideoPlayer />} />
         <Route path="/my-registrations" element={<MyRegistrations />} />
         <Route path="/recommendations" element={<Recommendations />} />
