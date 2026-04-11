@@ -105,15 +105,38 @@ export const CourseDetail: React.FC = () => {
   }
 
   const handleNextStep = () => {
-    if (registerStep === 1) {
-      setRegisterStep(2)
-    } else if (registerStep === 2) {
-      if (!city || !city.trim()) {
-        setRegisterError('Please enter your city name')
-        return
+    const isLiveCourse = course?.course_type === 'live'
+    
+    if (isLiveCourse) {
+      if (registerStep === 1) {
+        setSelectedDuration('lifetime')
+        setRegisterStep(2)
+      } else if (registerStep === 2) {
+        if (!city || !city.trim()) {
+          setRegisterError('Please enter your city name')
+          return
+        }
+        setRegisterError('')
+        setRegisterStep(3)
       }
-      setRegisterError('')
-      setRegisterStep(3)
+    } else {
+      if (registerStep === 1) {
+        if (!selectedDuration) {
+          setRegisterError('Please select an access duration')
+          return
+        }
+        setRegisterError('')
+        setRegisterStep(2)
+      } else if (registerStep === 2) {
+        setRegisterStep(3)
+      } else if (registerStep === 3) {
+        if (!city || !city.trim()) {
+          setRegisterError('Please enter your city name')
+          return
+        }
+        setRegisterError('')
+        setRegisterStep(4)
+      }
     }
   }
 
@@ -548,7 +571,7 @@ export const CourseDetail: React.FC = () => {
 
             {/* Step Indicator */}
             <div className="flex items-center justify-center gap-2 mb-5">
-              {[1, 2, 3, 4].map((step) => (
+              {(course?.course_type === 'live' ? [1, 2, 3] : [1, 2, 3, 4]).map((step) => (
                 <div key={step} className="flex items-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                     registerStep >= step 
@@ -557,7 +580,7 @@ export const CourseDetail: React.FC = () => {
                   }`}>
                     {registerStep > step ? <CheckCircle className="w-5 h-5" /> : step}
                   </div>
-                  {step < 4 && (
+                  {step < (course?.course_type === 'live' ? 3 : 4) && (
                     <div className={`w-8 h-1 mx-1 rounded-full transition-all ${
                       registerStep > step 
                         ? 'bg-black dark:bg-white' 
@@ -570,10 +593,20 @@ export const CourseDetail: React.FC = () => {
 
             {/* Step Labels */}
             <div className="flex justify-center gap-2 mb-5 text-xs text-gray-500 dark:text-gray-400">
-              <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Duration</span>
-              <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Payment</span>
-              <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Details</span>
-              <span className={registerStep >= 4 ? 'text-black dark:text-white font-medium' : ''}>4. Upload</span>
+              {course?.course_type === 'live' ? (
+                <>
+                  <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Payment</span>
+                  <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Details</span>
+                  <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Upload</span>
+                </>
+              ) : (
+                <>
+                  <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Duration</span>
+                  <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Payment</span>
+                  <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Details</span>
+                  <span className={registerStep >= 4 ? 'text-black dark:text-white font-medium' : ''}>4. Upload</span>
+                </>
+              )}
             </div>
 
             {registerSuccess ? (
@@ -598,8 +631,8 @@ export const CourseDetail: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* Step 1: Duration Selection */}
-                {registerStep === 1 && (
+                {/* Step 1: Duration Selection (Recorded courses only) */}
+                {registerStep === 1 && course?.course_type !== 'live' && (
                   <div className="space-y-4">
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
@@ -658,8 +691,60 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 2: Payment Info */}
-                {registerStep === 2 && (
+                {/* Step 1: Payment Info (Live courses) */}
+                {registerStep === 1 && course?.course_type === 'live' && (
+                  <div className="space-y-4">
+                    {!qrData ? (
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                        <div className="animate-pulse">
+                          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-32 mx-auto mb-3"></div>
+                          <div className="w-40 h-40 bg-gray-300 dark:bg-gray-600 rounded-xl mx-auto mb-3"></div>
+                          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-40 mx-auto"></div>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Loading payment details...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Scan QR code to pay
+                          </p>
+                          <p className="text-3xl font-bold text-black dark:text-white mb-3">₹{qrData.amount}</p>
+                          <img 
+                            src={qrData.qr_code} 
+                            alt="Payment QR Code" 
+                            className="w-40 h-40 mx-auto rounded-xl"
+                          />
+                          <p className="text-xs text-gray-500 mt-3">
+                            UPI ID: <span className="font-mono">{qrData.upi_id}</span>
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-sm text-blue-700 dark:text-blue-300">
+                          <p className="font-medium mb-1">📱 How to Pay:</p>
+                          <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                            <li>Open your UPI app (Google Pay, PhonePe, Paytm, etc.)</li>
+                            <li>Scan the QR code above</li>
+                            <li>Pay ₹{qrData.amount}</li>
+                            <li>Take a screenshot of payment confirmation</li>
+                          </ol>
+                        </div>
+                      </>
+                    )}
+
+                    {qrData && (
+                      <button
+                        onClick={handleNextStep}
+                        className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+                      >
+                        Done, Next <ArrowRight className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 2: Payment Info (Recorded courses) */}
+                {registerStep === 2 && course?.course_type !== 'live' && (
                   <div className="space-y-4">
                     {!qrData ? (
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
@@ -713,8 +798,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 3: Details */}
-                {registerStep === 3 && (
+                {/* Step 2: Details (Live) / Step 3: Details (Recorded) */}
+                {(registerStep === 2 && course?.course_type === 'live') || (registerStep === 3 && course?.course_type !== 'live') && (
                   <div className="space-y-4">
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm">
                       <p className="text-gray-500 dark:text-gray-400 mb-2">Your Details</p>
@@ -757,7 +842,7 @@ export const CourseDetail: React.FC = () => {
 
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setRegisterStep(1)}
+                        onClick={() => setRegisterStep(course?.course_type === 'live' ? 1 : 2)}
                         className="btn-secondary flex-1 py-3"
                       >
                         Back
@@ -772,8 +857,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 4: Upload Screenshot */}
-                {registerStep === 4 && (
+                {/* Step 3: Upload (Live) / Step 4: Upload (Recorded) */}
+                {(registerStep === 3 && course?.course_type === 'live') || (registerStep === 4 && course?.course_type !== 'live') && (
                   <div className="space-y-4">
                     <div className="text-center mb-4">
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
@@ -827,7 +912,7 @@ export const CourseDetail: React.FC = () => {
 
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setRegisterStep(2)}
+                        onClick={() => setRegisterStep(course?.course_type === 'live' ? 2 : 3)}
                         disabled={registrationMutation.isPending}
                         className="btn-secondary flex-1 py-3"
                       >

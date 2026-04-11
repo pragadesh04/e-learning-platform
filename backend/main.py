@@ -23,7 +23,7 @@ from routers import (
     registrations_router,
     inbox_router,
 )
-from utils.cleanup import cleanup_expired_screenshots
+from utils.cleanup import cleanup_expired_screenshots, cleanup_expired_course_access
 from settings import settings
 
 import logging
@@ -49,15 +49,16 @@ async def daily_cleanup_task():
 
             sleep_seconds = (next_midnight - now).total_seconds()
             logger.info(
-                f"Next screenshot cleanup scheduled in {sleep_seconds / 3600:.1f} hours"
+                f"Next cleanup scheduled in {sleep_seconds / 3600:.1f} hours"
             )
 
             await asyncio.sleep(sleep_seconds)
 
             # Run cleanup
-            logger.info("Running daily screenshot cleanup...")
+            logger.info("Running daily cleanup...")
             await cleanup_expired_screenshots(days=30)
-            logger.info("Screenshot cleanup completed")
+            await cleanup_expired_course_access()
+            logger.info("Daily cleanup completed")
 
         except Exception as e:
             logger.error(f"Cleanup task error: {e}")

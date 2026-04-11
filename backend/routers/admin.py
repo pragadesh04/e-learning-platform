@@ -355,6 +355,64 @@ async def reject_registration(registration_id: str, reason: str = None):
     return {"message": "Registration rejected"}
 
 
+@router.post("/registrations/{registration_id}/revoke")
+async def revoke_registration_access(registration_id: str):
+    """Revoke course access for an approved registration"""
+    reg = await database.get_registration_by_id(registration_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.get("status") != "approved":
+        raise HTTPException(
+            status_code=400, detail="Can only revoke access for approved registrations"
+        )
+
+    if reg.get("user_id") and reg.get("course_id"):
+        await database.revoke_course_access(reg["user_id"], reg["course_id"])
+
+    await database.update_registration_status(registration_id, "revoked")
+
+    user_name = reg.get("name", "Unknown")
+    course_title = reg.get("course_title", "the course")
+
+    from utils.telegram import notify_all_admins
+
+    await notify_all_admins(
+        registration_id,
+        "revoked",
+        approver_name="Dashboard",
+        user_name=user_name,
+        course_title=course_title,
+    )
+
+    telegram_id = reg.get("telegram_id")
+    if telegram_id:
+        message = f"🚫 *Your course access has been revoked.*\n\n📚 *Course:* {course_title}\n\nPlease contact support if you believe this is an error."
+
+        try:
+            from utils.telegram import send_telegram_message
+
+            await send_telegram_message(telegram_id, message)
+        except Exception as e:
+            print(f"[ERROR] Failed to send revoke message to user: {e}")
+
+    return {"message": "Course access revoked"}
+
+
+@router.delete("/registrations/{registration_id}")
+async def delete_registration(registration_id: str):
+    """Delete a registration"""
+    reg = await database.get_registration_by_id(registration_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.get("status") == "approved" and reg.get("user_id") and reg.get("course_id"):
+        await database.revoke_course_access(reg["user_id"], reg["course_id"])
+
+    await database.delete_registration(registration_id)
+    return {"message": "Registration deleted"}
+
+
 @router.get("/config/upi")
 async def get_upi():
     value = await database.get_config("upi_id")

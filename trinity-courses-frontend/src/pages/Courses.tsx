@@ -348,6 +348,7 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
     six_months: course?.access_durations?.six_months?.toString() || '0',
     lifetime: course?.access_durations?.lifetime?.toString() || '0'
   })
+  const [liveFee, setLiveFee] = useState(course?.access_durations?.lifetime?.toString() || '')
 
   useEffect(() => {
     setTitle(course?.title || '')
@@ -376,6 +377,7 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
       six_months: course?.access_durations?.six_months?.toString() || '0',
       lifetime: course?.access_durations?.lifetime?.toString() || '0'
     })
+    setLiveFee(course?.access_durations?.lifetime?.toString() || '')
   }, [course])
 
   const handleImageUpload = async (file: File) => {
@@ -478,13 +480,17 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
         }))
       : undefined
 
-    const filteredAccessDurations = courseType === 'recorded'
+    const filteredAccessDurations = courseType === 'live'
       ? {
+          three_months: 0,
+          six_months: 0,
+          lifetime: parseFloat(liveFee) || 0
+        }
+      : {
           three_months: parseFloat(accessDurations.three_months) || 0,
           six_months: parseFloat(accessDurations.six_months) || 0,
           lifetime: parseFloat(accessDurations.lifetime) || 0
         }
-      : undefined
 
     onSubmit({
       title,
@@ -635,7 +641,23 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
           </div>
         )}
 
-        {courseType === 'recorded' && (
+        {courseType === 'live' ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Lifetime Fee (₹)
+            </label>
+            <input
+              type="number"
+              value={liveFee}
+              onChange={(e) => setLiveFee(e.target.value)}
+              className="input-field"
+              min="0"
+              step="1"
+              placeholder="Enter course fee"
+              required
+            />
+          </div>
+        ) : (
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Access Duration Pricing

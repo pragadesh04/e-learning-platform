@@ -48,10 +48,57 @@ async def cleanup_expired_screenshots(days=30):
     return deleted_count
 
 
+async def cleanup_expired_course_access():
+    """Remove expired course access entries from users' accessible_courses arrays"""
+    db = await get_database()
+    now = datetime.utcnow()
+    
+    print(f"Cleaning up expired course access at {now}")
+    
+    cursor = db.users.find({
+        "accessible_courses": {"$exists": True, "$ne": []}
+    })
+    
+    cleaned_count = 0
+    users_checked = 0
+    
+    async for user in cursor:
+        users_checked += 1
+        accessible_courses = user.get("accessible_courses", [])
+        
+        if not accessible_courses:
+            continue
+        
+        new_accessible = []
+        has_changes = False
+        
+        for access in accessible_courses:
+            if isinstance(access, dict):
+                expires_at = access.get("expires_at")
+                if expires_at is not None and now > expires_at:
+                    has_changes = True
+                    print(f"Removing expired access: user {user.get('_id')}, course {access.get('course_id')}")
+                    cleaned_count += 1
+                else:
+                    new_accessible.append(access)
+            else:
+                new_accessible.append(access)
+        
+        if has_changes:
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"accessible_courses": new_accessible}}
+            )
+    
+    print(f"Course access cleanup complete. Checked {users_checked} users, removed {cleaned_count} expired entries")
+    return cleaned_count
+
+
 async def run_cleanup_task():
     """Run cleanup task - can be called by scheduler"""
     try:
         await cleanup_expired_screenshots(days=30)
+        await cleanup_expired_course_access()
     except Exception as e:
         print(f"Cleanup task failed: {e}")
 
