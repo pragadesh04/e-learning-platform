@@ -25,7 +25,6 @@ class AccessDurations(BaseModel):
 class CourseBase(BaseModel):
     title: str
     description: str
-    fee: float
     image_url: Optional[str] = None
     course_type: str = "recorded"
     start_date: Optional[str] = None
@@ -47,7 +46,6 @@ class CourseCreate(CourseBase):
 class CourseUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    fee: Optional[float] = None
     image_url: Optional[str] = None
     course_type: Optional[str] = None
     start_date: Optional[str] = None
@@ -82,6 +80,7 @@ class RegistrationResponse(BaseModel):
     course_id: Optional[str] = None
     course_title: str
     amount: float
+    access_duration_type: Optional[str] = None
     screenshot_url: Optional[str] = None
     status: str
     rejection_reason: Optional[str] = None
@@ -119,7 +118,7 @@ class UserResponse(BaseModel):
     name: str
     city: Optional[str] = None
     is_admin: bool
-    accessible_courses: List[str] = []
+    accessible_courses: List = []
     created_at: Optional[datetime] = None
 
     class Config:

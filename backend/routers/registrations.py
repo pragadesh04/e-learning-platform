@@ -44,6 +44,7 @@ async def create_registration(
     course_id: str = Form(...),
     name: str = Form(...),
     city: str = Form(...),
+    access_duration_type: str = Form(...),
     screenshot: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
 ):
@@ -57,10 +58,23 @@ async def create_registration(
             status_code=400, detail="Registration is closed for this course"
         )
 
+    valid_durations = ["three_months", "six_months", "lifetime"]
+    if access_duration_type not in valid_durations:
+        raise HTTPException(
+            status_code=400, detail="Invalid access duration type"
+        )
+
+    access_durations = course.get("access_durations", {})
+    amount = access_durations.get(access_duration_type, 0)
+
+    if amount <= 0:
+        raise HTTPException(
+            status_code=400, detail="Selected access duration is not available"
+        )
+
     user_id = current_user["id"]
     user_mobile = current_user.get("mobile", "")
 
-    # Check existing registration
     existing_reg = await database.get_user_registrations(user_id)
     for reg in existing_reg:
         if reg.get("course_id") == course_id and reg.get("status") in [
@@ -71,7 +85,6 @@ async def create_registration(
                 status_code=400, detail="Already registered for this course"
             )
 
-    # Upload screenshot to Cloudinary
     screenshot_url = None
     screenshot_public_id = None
     screenshot_uploaded_at = None
@@ -85,8 +98,6 @@ async def create_registration(
         screenshot_uploaded_at = upload_result["uploaded_at"]
     except Exception as e:
         logger.error(f"Cloudinary upload failed: {e}")
-        # If Cloudinary fails, we can still proceed without screenshot URL
-        # But you might want to raise an error instead
 
     registration_data = {
         "user_id": user_id,
@@ -95,7 +106,8 @@ async def create_registration(
         "mobile": user_mobile,
         "course_id": course_id,
         "course_title": course.get("title"),
-        "amount": course.get("fee", 0),
+        "amount": amount,
+        "access_duration_type": access_duration_type,
         "screenshot_url": screenshot_url,
         "screenshot_public_id": screenshot_public_id,
         "screenshot_uploaded_at": screenshot_uploaded_at,
@@ -120,13 +132,16 @@ async def approve_registration(
     if not current_user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    reg = await database.get_registration_by_id(registration_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
     await database.update_registration_status(registration_id, "approved")
     await database.increment_course_count(registration_id)
 
-    # Add course access to user
-    reg = await database.get_registration_by_id(registration_id)
-    if reg and reg.get("user_id"):
-        await database.add_course_access(reg["user_id"], reg["course_id"])
+    if reg.get("user_id"):
+        duration_type = reg.get("access_duration_type", "lifetime")
+        await database.add_course_access(reg["user_id"], reg["course_id"], duration_type)
 
     return {"message": "Registration approved"}
 
@@ -143,3 +158,46 @@ async def reject_registration(
 
     await database.update_registration_status(registration_id, "rejected", reason)
     return {"message": "Registration rejected"}
+
+
+@router.post("/{registration_id}/revoke")
+async def revoke_registration_access(
+    registration_id: str, current_user: dict = Depends(get_current_user)
+):
+    """Revoke course access for an approved registration (admin only)"""
+    if not current_user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    reg = await database.get_registration_by_id(registration_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.get("status") != "approved":
+        raise HTTPException(
+            status_code=400, detail="Can only revoke access for approved registrations"
+        )
+
+    if reg.get("user_id") and reg.get("course_id"):
+        await database.revoke_course_access(reg["user_id"], reg["course_id"])
+
+    await database.update_registration_status(registration_id, "revoked")
+    return {"message": "Course access revoked"}
+
+
+@router.delete("/{registration_id}")
+async def delete_registration(
+    registration_id: str, current_user: dict = Depends(get_current_user)
+):
+    """Delete a registration (admin only)"""
+    if not current_user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    reg = await database.get_registration_by_id(registration_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.get("status") == "approved" and reg.get("user_id") and reg.get("course_id"):
+        await database.revoke_course_access(reg["user_id"], reg["course_id"])
+
+    await database.delete_registration(registration_id)
+    return {"message": "Registration deleted"}

@@ -55,7 +55,7 @@ async def get_recommendations(current_user: dict = Depends(get_current_user)):
 
     available_courses_text = "\n".join(
         [
-            f"- {c.get('title', 'Untitled')}: {c.get('description', 'No description')} (₹{c.get('fee', 0)})"
+            f"- {c.get('title', 'Untitled')}: {c.get('description', 'No description')}"
             for c in available_courses
         ]
     )
@@ -141,7 +141,12 @@ async def get_course_qr(course_id: str, current_user: dict = Depends(get_current
         raise HTTPException(status_code=404, detail="Course not found")
 
     upi_id = await database.get_config("upi_id") or "yourname@upi"
-    amount = course.get("fee", 0)
+    access_durations = course.get("access_durations", {})
+    amount = access_durations.get("lifetime", 0)
+    if amount <= 0:
+        amount = access_durations.get("six_months", 0)
+    if amount <= 0:
+        amount = access_durations.get("three_months", 0)
 
     from bot.utils.qr_generator import generate_qr_code
 
@@ -153,6 +158,7 @@ async def get_course_qr(course_id: str, current_user: dict = Depends(get_current
         "amount": amount,
         "upi_id": upi_id,
         "qr_code": f"data:image/png;base64,{qr_base64}",
+        "access_durations": access_durations,
     }
 
 
@@ -160,14 +166,21 @@ async def get_course_qr(course_id: str, current_user: dict = Depends(get_current
 async def get_course_videos(
     course_id: str, current_user: dict = Depends(get_current_user)
 ):
-    """Get course videos (requires course access)"""
+    """Get course videos (requires valid course access)"""
     user = await database.get_user_by_id(current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    course_ids = user.get("accessible_courses", [])
-    if course_id not in course_ids and not user.get("is_admin", False):
-        raise HTTPException(status_code=403, detail="Access denied")
+    if not user.get("is_admin", False):
+        has_access = await database.check_course_access(current_user["id"], course_id)
+        if not has_access:
+            access_info = await database.get_course_access_info(current_user["id"], course_id)
+            if access_info and access_info.get("is_expired"):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Course access has expired"
+                )
+            raise HTTPException(status_code=403, detail="Access denied")
 
     course = await database.get_course_by_id(course_id)
     if not course:

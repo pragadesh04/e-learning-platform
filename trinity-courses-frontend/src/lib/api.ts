@@ -183,11 +183,12 @@ export const api = {
     return res.json()
   },
 
-  async registerCourse(courseId: string, name: string, city: string, screenshot: File) {
+  async registerCourse(courseId: string, name: string, city: string, screenshot: File, accessDurationType: string) {
     const formData = new FormData()
     formData.append('course_id', courseId)
     formData.append('name', name)
     formData.append('city', city)
+    formData.append('access_duration_type', accessDurationType)
     formData.append('screenshot', screenshot)
     
     const res = await fetchWithAuth(`${API_BASE}/web`, {
@@ -237,7 +238,7 @@ export const api = {
     return res.json()
   },
 
-  async createCourse(data: { title: string; description: string; fee: number; image_url?: string; course_type?: string; start_date?: string; start_time?: string; sessions?: number; duration?: number; video_type?: string; videos?: any[] }) {
+  async createCourse(data: { title: string; description: string; image_url?: string; course_type?: string; start_date?: string; start_time?: string; sessions?: number; duration?: number; video_type?: string; videos?: any[]; access_durations?: { three_months?: number; six_months?: number; lifetime?: number } }) {
     const res = await fetchWithAuth(`${API_BASE}/courses`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -247,7 +248,7 @@ export const api = {
     return res.json()
   },
 
-  async updateCourse(id: string, data: { title?: string; description?: string; fee?: number; image_url?: string; course_type?: string; start_date?: string; start_time?: string; sessions?: number; duration?: number; video_type?: string; videos?: any[] }) {
+  async updateCourse(id: string, data: { title?: string; description?: string; image_url?: string; course_type?: string; start_date?: string; start_time?: string; sessions?: number; duration?: number; video_type?: string; videos?: any[]; access_durations?: { three_months?: number; six_months?: number; lifetime?: number } }) {
     const res = await fetchWithAuth(`${API_BASE}/courses/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -295,6 +296,18 @@ export const api = {
       : `${API_BASE}/registrations/${id}/reject`
     const res = await fetchWithAuth(url, { method: 'PUT' })
     if (!res.ok) throw new Error('Failed to reject registration')
+    return res.json()
+  },
+
+  async revokeRegistration(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/registrations/${id}/revoke`, { method: 'POST' })
+    if (!res.ok) throw new Error('Failed to revoke registration')
+    return res.json()
+  },
+
+  async deleteRegistration(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/registrations/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Failed to delete registration')
     return res.json()
   },
 

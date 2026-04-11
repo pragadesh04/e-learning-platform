@@ -14,6 +14,14 @@ const formatHours = (hours: number): string => {
   return `${h} Hour${h > 1 ? 's' : ''} ${m} Minutes`
 }
 
+const getLowestPrice = (course: any): number | null => {
+  const durations = course?.access_durations || {}
+  if (durations.three_months > 0) return durations.three_months
+  if (durations.six_months > 0) return durations.six_months
+  if (durations.lifetime > 0) return durations.lifetime
+  return null
+}
+
 export const Courses: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<any>(null)
@@ -40,7 +48,7 @@ export const Courses: React.FC = () => {
           comparison = (a.registration_count || 0) - (b.registration_count || 0)
           break
         case 'price':
-          comparison = (a.fee || 0) - (b.fee || 0)
+          comparison = (getLowestPrice(a) || 0) - (getLowestPrice(b) || 0)
           break
         case 'date':
           const dateA = new Date(a.created_at || 0).getTime()
@@ -225,7 +233,16 @@ export const Courses: React.FC = () => {
               )}
               
               <div className="flex items-center justify-between mb-4">
-                <span className="text-2xl font-bold text-black dark:text-white">₹{course.fee}</span>
+                <div>
+                  {getLowestPrice(course) ? (
+                    <>
+                      <span className="text-2xl font-bold text-black dark:text-white">₹{getLowestPrice(course)}</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">onwards</span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-semibold text-gray-500 dark:text-gray-400">No pricing set</span>
+                  )}
+                </div>
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-black dark:text-white text-sm">
                   {course.registration_count} enrolled
                 </span>
@@ -305,7 +322,6 @@ interface SessionScheduleInput {
 const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSubmit, isLoading }) => {
   const [title, setTitle] = useState(course?.title || '')
   const [description, setDescription] = useState(course?.description || '')
-  const [fee, setFee] = useState(course?.fee?.toString() || '0')
   const [imageUrl, setImageUrl] = useState(course?.image_url || '')
   const [courseType, setCourseType] = useState(course?.course_type || 'recorded')
   const [startDate, setStartDate] = useState(course?.start_date || '')
@@ -336,7 +352,6 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
   useEffect(() => {
     setTitle(course?.title || '')
     setDescription(course?.description || '')
-    setFee(course?.fee?.toString() || '0')
     setImageUrl(course?.image_url || '')
     setCourseType(course?.course_type || 'recorded')
     setStartDate(course?.start_date || '')
@@ -465,16 +480,15 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
 
     const filteredAccessDurations = courseType === 'recorded'
       ? {
-          three_months: parseFloat(accessDurations.three_months) || undefined,
-          six_months: parseFloat(accessDurations.six_months) || undefined,
-          lifetime: parseFloat(accessDurations.lifetime) || undefined
+          three_months: parseFloat(accessDurations.three_months) || 0,
+          six_months: parseFloat(accessDurations.six_months) || 0,
+          lifetime: parseFloat(accessDurations.lifetime) || 0
         }
       : undefined
 
     onSubmit({
       title,
       description,
-      fee: parseFloat(fee),
       image_url: imageUrl || undefined,
       course_type: courseType,
       start_date: courseType === 'live' ? startDate || undefined : undefined,
@@ -531,21 +545,6 @@ const CourseModal: React.FC<CourseModalProps> = ({ isOpen, onClose, course, onSu
             onChange={(e) => setDescription(e.target.value)}
             className="input-field resize-none"
             rows={3}
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Fee (₹)
-          </label>
-          <input
-            type="number"
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
-            className="input-field"
-            min="0"
-            step="0.01"
             required
           />
         </div>

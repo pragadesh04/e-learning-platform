@@ -108,6 +108,14 @@ async def create_course(course_data: dict):
     course_data["registration_count"] = 0
     course_data["created_at"] = datetime.utcnow()
     course_data["updated_at"] = datetime.utcnow()
+    
+    if "access_durations" not in course_data or course_data["access_durations"] is None:
+        course_data["access_durations"] = {
+            "three_months": 0,
+            "six_months": 0,
+            "lifetime": 0
+        }
+    
     result = await db.courses.insert_one(course_data)
     return str(result.inserted_id)
 
@@ -125,16 +133,13 @@ async def delete_course(course_id: str):
     db = await get_database()
     from bson import ObjectId
 
-    # Cascade delete: Remove registrations for this course
     await db.registrations.delete_many({"course_id": course_id})
 
-    # Cascade delete: Remove course from all users' accessible_courses
     await db.users.update_many(
         {},
-        {"$pull": {"accessible_courses": course_id}}
+        {"$pull": {"accessible_courses": {"course_id": course_id}}}
     )
 
-    # Delete the course
     await db.courses.delete_one({"_id": ObjectId(course_id)})
 
 
@@ -263,9 +268,13 @@ async def initialize_default_config():
             {
                 "title": "Sample Course",
                 "description": "Description",
-                "fee": 0,
                 "image_url": "https://placehold.co/400x200/transparent/white?text=Sample+Course&font=Poppins",
                 "registration_count": 0,
+                "access_durations": {
+                    "three_months": 0,
+                    "six_months": 0,
+                    "lifetime": 0
+                },
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow(),
             }
@@ -358,12 +367,105 @@ async def get_user_by_id(user_id: str):
     return None
 
 
-async def add_course_access(user_id: str, course_id: str):
+async def add_course_access(user_id: str, course_id: str, duration_type: str = "lifetime"):
+    db = await get_database()
+    from bson import ObjectId
+    from datetime import datetime, timedelta
+
+    expires_at = None
+    if duration_type == "three_months":
+        expires_at = datetime.utcnow() + timedelta(days=90)
+    elif duration_type == "six_months":
+        expires_at = datetime.utcnow() + timedelta(days=180)
+
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$addToSet": {
+            "accessible_courses": {
+                "course_id": course_id,
+                "expires_at": expires_at,
+                "duration_type": duration_type
+            }
+        }}
+    )
+
+
+async def check_course_access(user_id: str, course_id: str) -> bool:
+    db = await get_database()
+    from bson import ObjectId
+    from datetime import datetime
+
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return False
+
+    if not user:
+        return False
+
+    accessible = user.get("accessible_courses", [])
+    now = datetime.utcnow()
+
+    for access in accessible:
+        if isinstance(access, dict):
+            if access.get("course_id") == course_id:
+                expires_at = access.get("expires_at")
+                if expires_at is None:
+                    return True
+                if now < expires_at:
+                    return True
+                return False
+        elif access == course_id:
+            return True
+
+    return False
+
+
+async def get_course_access_info(user_id: str, course_id: str) -> dict:
+    db = await get_database()
+    from bson import ObjectId
+    from datetime import datetime
+
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return None
+
+    if not user:
+        return None
+
+    accessible = user.get("accessible_courses", [])
+    now = datetime.utcnow()
+
+    for access in accessible:
+        if isinstance(access, dict):
+            if access.get("course_id") == course_id:
+                expires_at = access.get("expires_at")
+                is_expired = expires_at is not None and now > expires_at
+                return {
+                    "has_access": not is_expired,
+                    "expires_at": expires_at,
+                    "duration_type": access.get("duration_type"),
+                    "is_expired": is_expired
+                }
+        elif access == course_id:
+            return {
+                "has_access": True,
+                "expires_at": None,
+                "duration_type": "lifetime",
+                "is_expired": False
+            }
+
+    return None
+
+
+async def revoke_course_access(user_id: str, course_id: str):
     db = await get_database()
     from bson import ObjectId
 
     await db.users.update_one(
-        {"_id": ObjectId(user_id)}, {"$addToSet": {"accessible_courses": course_id}}
+        {"_id": ObjectId(user_id)},
+        {"$pull": {"accessible_courses": {"course_id": course_id}}}
     )
 
 
@@ -375,12 +477,26 @@ async def get_user_courses(user_id: str):
     if not user:
         return []
 
-    course_ids = user.get("accessible_courses", [])
+    accessible = user.get("accessible_courses", [])
     courses = []
-    for course_id in course_ids:
-        course = await get_course_by_id(course_id)
-        if course:
-            courses.append(course)
+    now = datetime.utcnow()
+    
+    for access in accessible:
+        if isinstance(access, dict):
+            course_id = access.get("course_id")
+            expires_at = access.get("expires_at")
+            if expires_at and now > expires_at:
+                continue
+        else:
+            course_id = access
+        
+        if course_id:
+            course = await get_course_by_id(course_id)
+            if course:
+                if isinstance(access, dict):
+                    course["access_expires_at"] = access.get("expires_at")
+                    course["access_duration_type"] = access.get("duration_type")
+                courses.append(course)
     return courses
 
 
@@ -551,6 +667,29 @@ async def update_user(user_id: str, updates: dict):
     except Exception as e:
         print(f"Error updating user: {e}")
         return False
+
+
+async def delete_user(user_id: str):
+    """Delete user and cascade delete related records"""
+    db = await get_database()
+    from bson import ObjectId
+
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if user:
+        mobile = user.get("mobile")
+        await db.registrations.delete_many({"user_id": user_id})
+        await db.inbox.delete_many({"user_id": user_id})
+        if mobile:
+            await db.chat_history.delete_many({"mobile": mobile})
+        await db.users.delete_one({"_id": ObjectId(user_id)})
+
+
+async def delete_registration(reg_id: str):
+    """Delete a registration"""
+    db = await get_database()
+    from bson import ObjectId
+
+    await db.registrations.delete_one({"_id": ObjectId(reg_id)})
 
 
 async def store_otp(mobile: str, otp: str):

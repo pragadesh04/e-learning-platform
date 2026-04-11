@@ -15,6 +15,7 @@ export const CourseDetail: React.FC = () => {
   const [registerStep, setRegisterStep] = useState(1)
   const [name, setName] = useState('')
   const [city, setCity] = useState('')
+  const [selectedDuration, setSelectedDuration] = useState<string>('')
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [registerError, setRegisterError] = useState('')
   const [registerSuccess, setRegisterSuccess] = useState(false)
@@ -43,7 +44,8 @@ export const CourseDetail: React.FC = () => {
     mutationFn: () => {
       if (!screenshot) throw new Error('Please upload payment screenshot')
       if (!city || !city.trim()) throw new Error('Please enter your city name')
-      return api.registerCourse(courseId!, name, city.trim(), screenshot)
+      if (!selectedDuration) throw new Error('Please select an access duration')
+      return api.registerCourse(courseId!, name, city.trim(), screenshot, selectedDuration)
     },
     onSuccess: () => {
       setRegisterSuccess(true)
@@ -127,6 +129,36 @@ export const CourseDetail: React.FC = () => {
     setRegisterError('')
     setScreenshot(null)
     setRegisterStep(1)
+    setSelectedDuration('')
+  }
+
+  const getAvailableDurations = () => {
+    const durations: { type: string; label: string; price: number }[] = []
+    const access = course?.access_durations || {}
+    if (access.three_months > 0) {
+      durations.push({ type: 'three_months', label: '3 Months', price: access.three_months })
+    }
+    if (access.six_months > 0) {
+      durations.push({ type: 'six_months', label: '6 Months', price: access.six_months })
+    }
+    if (access.lifetime > 0) {
+      durations.push({ type: 'lifetime', label: 'Lifetime', price: access.lifetime })
+    }
+    return durations
+  }
+
+  const getDurationLabel = (type: string) => {
+    switch (type) {
+      case 'three_months': return '3 Months'
+      case 'six_months': return '6 Months'
+      case 'lifetime': return 'Lifetime'
+      default: return type
+    }
+  }
+
+  const getSelectedAmount = () => {
+    const access = course?.access_durations || {}
+    return access[selectedDuration] || 0
   }
 
   const getStatusBadge = (status: string) => {
@@ -420,8 +452,21 @@ export const CourseDetail: React.FC = () => {
             <div className="sticky top-4 space-y-4">
               {/* Price Card */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Course Fee</p>
-                <p className="text-4xl font-bold text-black dark:text-white">₹{course.fee}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  {course.course_type === 'recorded' ? 'Access Duration' : 'Course Fee'}
+                </p>
+                {course.course_type === 'recorded' && course.access_durations ? (
+                  <div className="space-y-2">
+                    {getAvailableDurations().map((d) => (
+                      <div key={d.type} className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-black dark:text-white">₹{d.price}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{d.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-4xl font-bold text-black dark:text-white">₹{qrData?.amount || 0}</p>
+                )}
                 
                 {isRegistered ? (
                   <div className={`mt-4 p-4 rounded-xl ${getStatusBadge(myRegistration.status).bg}`}>
@@ -503,7 +548,7 @@ export const CourseDetail: React.FC = () => {
 
             {/* Step Indicator */}
             <div className="flex items-center justify-center gap-2 mb-5">
-              {[1, 2, 3].map((step) => (
+              {[1, 2, 3, 4].map((step) => (
                 <div key={step} className="flex items-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                     registerStep >= step 
@@ -512,7 +557,7 @@ export const CourseDetail: React.FC = () => {
                   }`}>
                     {registerStep > step ? <CheckCircle className="w-5 h-5" /> : step}
                   </div>
-                  {step < 3 && (
+                  {step < 4 && (
                     <div className={`w-8 h-1 mx-1 rounded-full transition-all ${
                       registerStep > step 
                         ? 'bg-black dark:bg-white' 
@@ -524,10 +569,11 @@ export const CourseDetail: React.FC = () => {
             </div>
 
             {/* Step Labels */}
-            <div className="flex justify-center gap-4 mb-5 text-xs text-gray-500 dark:text-gray-400">
-              <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Payment</span>
-              <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Details</span>
-              <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Upload</span>
+            <div className="flex justify-center gap-2 mb-5 text-xs text-gray-500 dark:text-gray-400">
+              <span className={registerStep >= 1 ? 'text-black dark:text-white font-medium' : ''}>1. Duration</span>
+              <span className={registerStep >= 2 ? 'text-black dark:text-white font-medium' : ''}>2. Payment</span>
+              <span className={registerStep >= 3 ? 'text-black dark:text-white font-medium' : ''}>3. Details</span>
+              <span className={registerStep >= 4 ? 'text-black dark:text-white font-medium' : ''}>4. Upload</span>
             </div>
 
             {registerSuccess ? (
@@ -552,8 +598,68 @@ export const CourseDetail: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* Step 1: Payment Info */}
+                {/* Step 1: Duration Selection */}
                 {registerStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Select your preferred access duration
+                      </p>
+                      <div className="space-y-2">
+                        {getAvailableDurations().map((d) => (
+                          <button
+                            key={d.type}
+                            onClick={() => setSelectedDuration(d.type)}
+                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                              selectedDuration === d.type
+                                ? 'border-black dark:border-white bg-black/5 dark:bg-white/5'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                  selectedDuration === d.type
+                                    ? 'border-black dark:border-white'
+                                    : 'border-gray-300 dark:border-gray-600'
+                                }`}>
+                                  {selectedDuration === d.type && (
+                                    <div className="w-3 h-3 rounded-full bg-black dark:bg-white" />
+                                  )}
+                                </div>
+                                <span className="font-medium dark:text-white">{d.label}</span>
+                              </div>
+                              <span className="text-xl font-bold text-black dark:text-white">₹{d.price}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {registerError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                        {registerError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        if (!selectedDuration) {
+                          setRegisterError('Please select an access duration')
+                          return
+                        }
+                        setRegisterError('')
+                        handleNextStep()
+                      }}
+                      className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+                    >
+                      Continue to Payment <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 2: Payment Info */}
+                {registerStep === 2 && (
                   <div className="space-y-4">
                     {!qrData ? (
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
@@ -567,10 +673,13 @@ export const CourseDetail: React.FC = () => {
                     ) : (
                       <>
                         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Pay for {getDurationLabel(selectedDuration)} access
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                             Scan QR code to pay
                           </p>
-                          <p className="text-3xl font-bold text-black dark:text-white mb-3">₹{qrData.amount}</p>
+                          <p className="text-3xl font-bold text-black dark:text-white mb-3">₹{getSelectedAmount()}</p>
                           <img 
                             src={qrData.qr_code} 
                             alt="Payment QR Code" 
@@ -586,7 +695,7 @@ export const CourseDetail: React.FC = () => {
                           <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-400">
                             <li>Open your UPI app (Google Pay, PhonePe, Paytm, etc.)</li>
                             <li>Scan the QR code above</li>
-                            <li>Pay ₹{qrData.amount}</li>
+                            <li>Pay ₹{getSelectedAmount()}</li>
                             <li>Take a screenshot of payment confirmation</li>
                           </ol>
                         </div>
@@ -604,8 +713,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 2: Details */}
-                {registerStep === 2 && (
+                {/* Step 3: Details */}
+                {registerStep === 3 && (
                   <div className="space-y-4">
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm">
                       <p className="text-gray-500 dark:text-gray-400 mb-2">Your Details</p>
@@ -663,8 +772,8 @@ export const CourseDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 3: Upload Screenshot */}
-                {registerStep === 3 && (
+                {/* Step 4: Upload Screenshot */}
+                {registerStep === 4 && (
                   <div className="space-y-4">
                     <div className="text-center mb-4">
                       <p className="text-gray-600 dark:text-gray-400 text-sm">

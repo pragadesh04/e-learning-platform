@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Filter, Eye, Check, X, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Filter, Eye, Check, X, Clock, CheckCircle, XCircle, Trash2, Ban } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { GlassModal } from '../components/GlassModal'
 import { api } from '../lib/api'
@@ -104,16 +104,44 @@ export const Registrations: React.FC = () => {
         },
     })
 
+    const revokeMutation = useMutation({
+        mutationFn: api.revokeRegistration,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['registrations'] })
+            queryClient.invalidateQueries({ queryKey: ['userCourses'] })
+            setSelectedReg(null)
+        },
+        onError: (error) => {
+            alert('Failed to revoke access. Please try again.')
+            console.error(error)
+        },
+    })
+
+    const deleteMutation = useMutation({
+        mutationFn: api.deleteRegistration,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['registrations'] })
+            queryClient.invalidateQueries({ queryKey: ['stats'] })
+            setSelectedReg(null)
+        },
+        onError: (error) => {
+            alert('Failed to delete registration. Please try again.')
+            console.error(error)
+        },
+    })
+
     const getStatusBadge = (status: string) => {
         const styles = {
             pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
             approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
             rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+            revoked: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
         }
         const icons = {
             pending: Clock,
             approved: CheckCircle,
             rejected: XCircle,
+            revoked: Ban,
         }
         const Icon = icons[status as keyof typeof icons] || Clock
         return (
@@ -200,7 +228,9 @@ export const Registrations: React.FC = () => {
                 onClose={() => setSelectedReg(null)}
                 onApprove={(id) => approveMutation.mutate(id)}
                 onReject={(id, reason) => rejectMutation.mutate({ id, reason })}
-                isLoading={approveMutation.isPending || rejectMutation.isPending}
+                onRevoke={(id) => revokeMutation.mutate(id)}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                isLoading={approveMutation.isPending || rejectMutation.isPending || revokeMutation.isPending || deleteMutation.isPending}
             />
 
             <GlassModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} title="Filter Registrations">
@@ -216,6 +246,7 @@ export const Registrations: React.FC = () => {
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
+                            <option value="revoked">Revoked</option>
                         </select>
                     </div>
                     <div>
@@ -269,6 +300,8 @@ interface RegistrationModalProps {
     onClose: () => void
     onApprove: (id: string) => void
     onReject: (id: string, reason?: string) => void
+    onRevoke: (id: string) => void
+    onDelete: (id: string) => void
     isLoading: boolean
 }
 
@@ -277,6 +310,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     onClose,
     onApprove,
     onReject,
+    onRevoke,
+    onDelete,
     isLoading,
 }) => {
     const [showRejectDropdown, setShowRejectDropdown] = useState(false)
@@ -344,6 +379,16 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Amount Paid</p>
                         <p className="text-2xl font-bold text-black dark:text-white">₹{registration.amount}</p>
                     </div>
+                    {registration.access_duration_type && (
+                        <div className="p-4 rounded-xl bg-white/30 dark:bg-black/30">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Access Duration</p>
+                            <p className="dark:text-white">
+                                {registration.access_duration_type === 'three_months' && '3 Months'}
+                                {registration.access_duration_type === 'six_months' && '6 Months'}
+                                {registration.access_duration_type === 'lifetime' && 'Lifetime'}
+                            </p>
+                        </div>
+                    )}
                     {registration.rejection_reason && (
                         <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20">
                             <p className="text-sm text-red-500 dark:text-red-400 mb-1">Rejection Reason</p>
@@ -402,6 +447,54 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                                 Approve
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {registration.status === 'approved' && (
+                    <div className="space-y-3 pt-2">
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to revoke this user\'s course access?')) {
+                                        onRevoke(registration.id)
+                                    }
+                                }}
+                                disabled={isLoading}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-medium hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                <Ban className="w-5 h-5" />
+                                Revoke Access
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to delete this registration? This will also revoke the user\'s course access.')) {
+                                        onDelete(registration.id)
+                                    }
+                                }}
+                                disabled={isLoading}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {(registration.status === 'rejected' || registration.status === 'revoked') && (
+                    <div className="space-y-3 pt-2">
+                        <button
+                            onClick={() => {
+                                if (window.confirm('Are you sure you want to delete this registration?')) {
+                                    onDelete(registration.id)
+                                }
+                            }}
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                            Delete Registration
+                        </button>
                     </div>
                 )}
             </div>

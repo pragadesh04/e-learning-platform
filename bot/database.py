@@ -95,6 +95,8 @@ async def delete_course(course_id: str):
     db = get_database()
     from bson import ObjectId
 
+    await db.registrations.delete_many({"course_id": course_id})
+    await db.users.update_many({}, {"$pull": {"accessible_courses": course_id}})
     await db.courses.delete_one({"_id": ObjectId(course_id)})
 
 
@@ -247,13 +249,25 @@ async def add_course_access(user_id: str, course_id: str):
     )
 
 
-async def update_registration_screenshot(reg_id: str, screenshot_path: str):
+async def delete_user(user_id: str):
     db = get_database()
     from bson import ObjectId
 
-    await db.registrations.update_one(
-        {"_id": ObjectId(reg_id)}, {"$set": {"screenshot_url": screenshot_path}}
-    )
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if user:
+        mobile = user.get("mobile")
+        await db.registrations.delete_many({"user_id": user_id})
+        await db.inbox.delete_many({"user_id": user_id})
+        if mobile:
+            await db.chat_history.delete_many({"mobile": mobile})
+        await db.users.delete_one({"_id": ObjectId(user_id)})
+
+
+async def delete_registration(reg_id: str):
+    db = get_database()
+    from bson import ObjectId
+
+    await db.registrations.delete_one({"_id": ObjectId(reg_id)})
 
 
 # Chat History Collection
