@@ -22,6 +22,7 @@ from routers import (
     courses_router,
     registrations_router,
     inbox_router,
+    gallery_router,
 )
 from utils.cleanup import cleanup_expired_screenshots, cleanup_expired_course_access
 from settings import settings
@@ -110,6 +111,7 @@ app.include_router(admin_router)
 app.include_router(courses_router)
 app.include_router(registrations_router)
 app.include_router(inbox_router)
+app.include_router(gallery_router)
 
 
 @app.get("/")

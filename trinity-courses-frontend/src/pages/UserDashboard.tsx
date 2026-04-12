@@ -133,7 +133,7 @@ export const UserDashboard: React.FC = () => {
     enabled: activeTab === 'courses' && debouncedQuery.length >= 2
   })
 
-  const { data: testimonials, isLoading: testimonialsLoading } = useQuery({
+  const { data: testimonials } = useQuery({
     queryKey: ['testimonials'],
     queryFn: api.getTestimonials,
   })
@@ -254,20 +254,7 @@ export const UserDashboard: React.FC = () => {
                   <p>No gallery images yet.</p>
                 </div>
               ) : (
-                <div className="space-y-8">
-                  {(['frock', 'skirt', 'flower'] as const).map((category) => {
-                    const categoryImages = galleryItems.filter((img: any) => img.category === category)
-                    if (categoryImages.length === 0) return null
-                    return (
-                      <div key={category}>
-                        <h3 className="text-sm font-medium dark:text-white/60 mb-3 uppercase tracking-wider">
-                          {category === 'frock' ? 'Kids Frocks' : category === 'skirt' ? 'Skirts' : 'Fabric Flowers'}
-                        </h3>
-                        <GalleryCarousel images={categoryImages} />
-                      </div>
-                    )
-                  })}
-                </div>
+                <GalleryCarousel images={galleryItems} />
               )}
             </section>
 
@@ -287,23 +274,9 @@ export const UserDashboard: React.FC = () => {
             </section>
 
             {/* Happy Customers */}
-            <section className="mb-12">
-              <h2 className="text-xl font-medium mb-6 dark:text-white/80">Happy Customers</h2>
-              {testimonialsLoading ? (
-                <div className="flex gap-4 justify-center">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="flex-1 max-w-xs p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                        <div className="flex-1">
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-                          <div className="h-2 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : testimonials && testimonials.length > 0 ? (
+            {(testimonials && testimonials.length > 0) && (
+              <section className="mb-12">
+                <h2 className="text-xl font-medium mb-6 dark:text-white/80">Happy Customers</h2>
                 <div className="flex flex-wrap justify-center gap-6">
                   {testimonials.map((customer: any) => (
                     <div key={customer.id} className="max-w-sm">
@@ -319,8 +292,8 @@ export const UserDashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : null}
-            </section>
+              </section>
+            )}
 
             {/* Founder */}
             <section className="mb-12">

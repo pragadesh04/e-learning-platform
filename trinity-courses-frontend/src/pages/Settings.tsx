@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, QrCode, User, Loader2, Lock } from 'lucide-react'
+import { Save, QrCode, User, Loader2, Lock, Instagram, Facebook, Youtube, MessageCircle } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -16,6 +16,15 @@ export const Settings: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  
+  // Social links state
+  const [instagram, setInstagram] = useState('')
+  const [facebook, setFacebook] = useState('')
+  const [youtube, setYoutube] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
+  const [socialSuccess, setSocialSuccess] = useState('')
+  const [socialError, setSocialError] = useState('')
+  
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
@@ -31,11 +40,38 @@ export const Settings: React.FC = () => {
     queryFn: api.getConfig,
   })
 
+  const { data: socialLinks } = useQuery({
+    queryKey: ['socialLinks'],
+    queryFn: api.getSocialLinks,
+  })
+
+  useEffect(() => {
+    if (socialLinks) {
+      setInstagram(socialLinks.instagram || '')
+      setFacebook(socialLinks.facebook || '')
+      setYoutube(socialLinks.youtube || '')
+      setWhatsapp(socialLinks.whatsapp || '')
+    }
+  }, [socialLinks])
+
   const updateConfigMutation = useMutation({
     mutationFn: api.updateConfig,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config'] })
       setUpiId('')
+    },
+  })
+
+  const updateSocialLinksMutation = useMutation({
+    mutationFn: api.updateSocialLinks,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['socialLinks'] })
+      setSocialSuccess('Social links updated successfully!')
+      setSocialError('')
+    },
+    onError: (err: any) => {
+      setSocialError(err.message || 'Failed to update social links')
+      setSocialSuccess('')
     },
   })
 
@@ -70,6 +106,12 @@ export const Settings: React.FC = () => {
 
   const handleSaveConfig = () => {
     updateConfigMutation.mutate(upiId)
+  }
+
+  const handleSaveSocialLinks = () => {
+    setSocialError('')
+    setSocialSuccess('')
+    updateSocialLinksMutation.mutate({ instagram, facebook, youtube, whatsapp })
   }
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -315,6 +357,107 @@ export const Settings: React.FC = () => {
                 Settings saved successfully!
               </p>
             )}
+          </div>
+        </GlassCard>
+
+        {/* Social Media Links */}
+        <GlassCard>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-black/10 dark:bg-white/10">
+              <MessageCircle className="w-6 h-6 text-black dark:text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold dark:text-white">Social Media Links</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                These links will appear on the user page footer
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {socialError && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                {socialError}
+              </div>
+            )}
+
+            {socialSuccess && (
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-600 dark:text-green-400 text-sm">
+                {socialSuccess}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <Instagram className="w-4 h-4 inline mr-1" /> Instagram
+                </label>
+                <input
+                  type="url"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="https://instagram.com/yourpage"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <Facebook className="w-4 h-4 inline mr-1" /> Facebook
+                </label>
+                <input
+                  type="url"
+                  value={facebook}
+                  onChange={(e) => setFacebook(e.target.value)}
+                  placeholder="https://facebook.com/yourpage"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <Youtube className="w-4 h-4 inline mr-1" /> YouTube
+                </label>
+                <input
+                  type="url"
+                  value={youtube}
+                  onChange={(e) => setYoutube(e.target.value)}
+                  placeholder="https://youtube.com/@yourchannel"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <MessageCircle className="w-4 h-4 inline mr-1" /> WhatsApp
+                </label>
+                <input
+                  type="url"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="https://wa.me/1234567890"
+                  className="input-field"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveSocialLinks}
+              disabled={updateSocialLinksMutation.isPending}
+              className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              {updateSocialLinksMutation.isPending ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5" />
+                  Save Social Links
+                </>
+              )}
+            </button>
           </div>
         </GlassCard>
 

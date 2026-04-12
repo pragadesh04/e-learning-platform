@@ -9,6 +9,7 @@ from routers.auth import router as auth_router
 from routers.courses import router as courses_router
 from routers.registrations import router as registrations_router
 from routers.inbox import router as inbox_router
+from routers.gallery import router as gallery_router
 
 __all__ = [
     "admin_router",
@@ -17,4 +18,5 @@ __all__ = [
     "courses_router",
     "registrations_router",
     "inbox_router",
+    "gallery_router",
 ]

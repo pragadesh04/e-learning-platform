@@ -342,6 +342,23 @@ export const api = {
     return res.json()
   },
 
+  // Social Links
+  async getSocialLinks() {
+    const res = await fetchWithAuth(`${API_BASE}/config/social_links`)
+    if (!res.ok) return { instagram: '', facebook: '', youtube: '', whatsapp: '' }
+    return res.json()
+  },
+
+  async updateSocialLinks(data: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string }) {
+    const res = await fetchWithAuth(`${API_BASE}/config/social_links`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error('Failed to update social links')
+    return res.json()
+  },
+
   // Image upload
   async uploadImage(file: File) {
     const formData = new FormData()
@@ -430,23 +447,6 @@ export const api = {
   async deleteTestimonial(id: string) {
     const res = await fetchWithAuth(`${API_BASE}/testimonials/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Failed to delete testimonial')
-    return res.json()
-  },
-
-  // Social Links
-  async getSocialLinks() {
-    const res = await fetchWithAuth(`${API_BASE}/social-links`)
-    if (!res.ok) throw new Error('Failed to fetch social links')
-    return res.json()
-  },
-
-  async updateSocialLinks(data: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string }) {
-    const res = await fetchWithAuth(`${API_BASE}/social-links`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (!res.ok) throw new Error('Failed to update social links')
     return res.json()
   },
 }

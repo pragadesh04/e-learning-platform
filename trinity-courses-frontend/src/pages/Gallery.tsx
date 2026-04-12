@@ -267,37 +267,15 @@ export const Gallery: React.FC = () => {
           <Layout className="w-5 h-5" />
           Best Work Showcase
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <GallerySection
-            title="Kids Frocks"
-            category="frock"
-            images={gallery?.gallery || []}
-            onUpload={handleUpload}
-            onDelete={handleDelete}
-            maxImages={50}
-            isMultiple
-          />
-
-          <GallerySection
-            title="Skirts"
-            category="skirt"
-            images={gallery?.gallery || []}
-            onUpload={handleUpload}
-            onDelete={handleDelete}
-            maxImages={50}
-            isMultiple
-          />
-
-          <GallerySection
-            title="Fabric Flowers"
-            category="flower"
-            images={gallery?.gallery || []}
-            onUpload={handleUpload}
-            onDelete={handleDelete}
-            maxImages={50}
-            isMultiple
-          />
-        </div>
+        <GallerySection
+          title="Best Work"
+          category="best_work"
+          images={gallery?.gallery || []}
+          onUpload={handleUpload}
+          onDelete={handleDelete}
+          maxImages={50}
+          isMultiple
+        />
       </div>
     </div>
   )

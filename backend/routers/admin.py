@@ -456,6 +456,18 @@ async def update_upi(config: ConfigUpdate):
     return {"message": "UPI ID updated successfully"}
 
 
+@router.get("/config/social_links")
+async def get_social_links():
+    value = await database.get_config("social_links")
+    return value or {"instagram": "", "facebook": "", "youtube": "", "whatsapp": ""}
+
+
+@router.put("/config/social_links")
+async def update_social_links(data: dict):
+    await database.set_config("social_links", data)
+    return {"message": "Social links updated successfully"}
+
+
 def extract_video_id(url: str) -> Optional[str]:
     patterns = [
         r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})",
