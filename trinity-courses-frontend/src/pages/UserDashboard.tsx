@@ -3,14 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useThemeStore } from '../store/themeStore'
-import { GlassCard } from '../components/GlassCard'
 import { api } from '../lib/api'
 import { 
   Play, Clock, LogOut, Menu, X, Home, 
   CheckCircle, Clock3, XCircle, Search, Sun, Moon,
-  Video, Sparkles, Compass, FileText, ArrowRight, Bell,
+  Video, Sparkles, Compass, FileText, Bell,
   ChevronLeft, ChevronRight,
-  Phone, MapPin, Instagram, Facebook, Youtube, MessageCircle
+  Instagram, Facebook, Youtube, MessageCircle
 } from 'lucide-react'
 
 type Tab = 'home' | 'courses' | 'mycourses' | 'registrations'
@@ -160,12 +159,7 @@ export const UserDashboard: React.FC = () => {
     category: item.category
   }))
 
-  const process = [
-    { title: 'Measuring', icon: '📏' },
-    { title: 'Cutting', icon: '✂️' },
-    { title: 'Stitching', icon: '🧵' },
-    { title: 'Finishing', icon: '✨' },
-  ]
+
 
   const displayedCourses = debouncedQuery.length >= 2 ? searchResults : allCourses
 
@@ -234,39 +228,39 @@ export const UserDashboard: React.FC = () => {
         return (
           <div>
             {/* Hero Section */}
-            <section className="relative h-64 md:h-80 flex items-center justify-center overflow-hidden rounded-2xl mb-8">
+            <section className="relative h-60 md:h-72 flex items-center justify-center overflow-hidden mb-12 -mx-4 md:mx-0">
               <div className="absolute inset-0">
                 <img src={heroBanner} alt="Hero" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               </div>
-              <div className="relative z-10 text-center text-white px-4">
-                <h1 className="text-2xl md:text-4xl font-bold mb-2">Professional Tailoring Courses</h1>
-                <p className="text-lg md:text-xl mb-4">Learn Stitching from Experts</p>
+              <div className="relative z-10 text-center text-white px-6 py-12">
+                <h1 className="text-3xl md:text-5xl font-light mb-3 tracking-tight">Professional Tailoring</h1>
+                <p className="text-lg md:text-xl mb-6 opacity-90">Learn the art of stitching from experts</p>
                 <button 
                   onClick={() => setActiveTab('courses')}
-                  className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black font-medium rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                  className="px-8 py-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white font-medium rounded-full hover:bg-white/30 transition-all duration-300"
                 >
-                  View Courses
+                  Explore Courses
                 </button>
               </div>
             </section>
 
             {/* Best Work Showcase - Carousel */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 dark:text-white">Our Best Work</h2>
+            <section className="mb-12">
+              <h2 className="text-xl font-medium mb-6 dark:text-white/80">Our Best Work</h2>
               
               {galleryItems.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <p>No gallery images yet.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {(['frock', 'skirt', 'flower'] as const).map((category) => {
                     const categoryImages = galleryItems.filter((img: any) => img.category === category)
                     if (categoryImages.length === 0) return null
                     return (
                       <div key={category}>
-                        <h3 className="text-lg font-semibold dark:text-white mb-3 capitalize">
+                        <h3 className="text-sm font-medium dark:text-white/60 mb-3 uppercase tracking-wider">
                           {category === 'frock' ? 'Kids Frocks' : category === 'skirt' ? 'Skirts' : 'Fabric Flowers'}
                         </h3>
                         <GalleryCarousel images={categoryImages} />
@@ -278,166 +272,103 @@ export const UserDashboard: React.FC = () => {
             </section>
 
             {/* Before/After */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 dark:text-white">Transformation</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                  <p className="text-center text-gray-500 dark:text-gray-400 mb-2 text-sm">Before</p>
-                  <img src={beforeImage} alt="Before" className="w-full h-48 object-cover rounded-xl" />
+            <section className="mb-12">
+              <h2 className="text-xl font-medium mb-6 dark:text-white/80">Transformation</h2>
+              <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <div className="space-y-2">
+                  <p className="text-xs text-center text-gray-400 dark:text-gray-500 uppercase tracking-wider">Before</p>
+                  <img src={beforeImage} alt="Before" className="w-full aspect-[3/4] object-cover rounded-2xl" />
                 </div>
-                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                  <p className="text-center text-gray-500 dark:text-gray-400 mb-2 text-sm">After</p>
-                  <img src={afterImage} alt="After" className="w-full h-48 object-cover rounded-xl" />
+                <div className="space-y-2">
+                  <p className="text-xs text-center text-gray-400 dark:text-gray-500 uppercase tracking-wider">After</p>
+                  <img src={afterImage} alt="After" className="w-full aspect-[3/4] object-cover rounded-2xl" />
                 </div>
               </div>
             </section>
 
             {/* Happy Customers */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 dark:text-white">Happy Customers</h2>
+            <section className="mb-12">
+              <h2 className="text-xl font-medium mb-6 dark:text-white/80">Happy Customers</h2>
               {testimonialsLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="flex gap-4 justify-center">
                   {[1, 2].map((i) => (
-                    <div key={i} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                    <div key={i} className="flex-1 max-w-xs p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
                         <div className="flex-1">
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-                          <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                          <div className="h-2 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : testimonials && testimonials.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="flex flex-wrap justify-center gap-6">
                   {testimonials.map((customer: any) => (
-                    <div key={customer.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                      <div className="flex items-center gap-4">
+                    <div key={customer.id} className="max-w-sm">
+                      <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm leading-relaxed">"{customer.feedback}"</p>
+                      <div className="flex items-center gap-2">
                         <img 
                           src={customer.image_url || '/images/customers/customer-1.jpg'} 
                           alt={customer.name} 
-                          className="w-14 h-14 rounded-full object-cover" 
+                          className="w-8 h-8 rounded-full object-cover" 
                         />
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-300 mb-1 text-sm">"{customer.feedback}"</p>
-                          <p className="font-medium dark:text-white">- {customer.name}</p>
-                        </div>
+                        <span className="text-sm font-medium dark:text-white/80">{customer.name}</span>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-center text-gray-500 dark:text-gray-400">No testimonials yet</p>
-              )}
+              ) : null}
             </section>
 
             {/* Founder */}
-            <section className="mb-8">
-              <div className="max-w-4xl mx-auto text-center">
-                <h2 className="text-2xl font-bold mb-4 dark:text-white">Meet Our Founder</h2>
-                <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                  <div className="flex flex-col md:flex-row items-center gap-4">
-                    <img src={founderImage} alt="Founder" className="w-24 h-24 rounded-full object-cover" />
-                    <div className="text-center md:text-left">
-                      <h3 className="text-xl font-bold dark:text-white">Trinity</h3>
-                      <p className="text-gray-600 dark:text-gray-400">Founder, Trinity Tailoring</p>
-                    </div>
+            <section className="mb-12">
+              <div className="max-w-2xl mx-auto text-center">
+                <h2 className="text-xl font-medium mb-6 dark:text-white/80">Meet Our Founder</h2>
+                <div className="flex flex-col items-center gap-4">
+                  <img src={founderImage} alt="Founder" className="w-20 h-20 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800" />
+                  <div>
+                    <p className="font-medium dark:text-white/90">Trinity</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Founder, Trinity Tailoring</p>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* Process */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 dark:text-white">Our Process</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {process.map((step, idx) => (
-                  <div key={idx} className="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
-                    <div className="text-4xl mb-2">{step.icon}</div>
-                    <h3 className="font-medium dark:text-white">{step.title}</h3>
-                  </div>
-                ))}
-              </div>
-            </section>
+
 
             
 
-            {/* View All Courses CTA */}
-            <div className="text-center">
-              <button
-                onClick={() => setActiveTab('courses')}
-                className="btn-secondary inline-flex items-center gap-2"
-              >
-                <Compass className="w-5 h-5" />
-                Browse All Courses
-              </button>
-            </div>
+
 
             {/* Footer */}
-            <footer className="py-8 mt-8">
-              <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div>
-                    <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-10 mb-3" />
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">Professional Tailoring Courses</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-3 dark:text-white">Quick Links</h4>
-                    <div className="space-y-2">
-                      <button onClick={() => setActiveTab('home')} className="block text-gray-500 hover:text-black dark:hover:text-white text-sm">Home</button>
-                      <button onClick={() => setActiveTab('courses')} className="block text-gray-500 hover:text-black dark:hover:text-white text-sm">Courses</button>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-3 dark:text-white">Contact</h4>
-                    <div className="space-y-2 text-gray-500 dark:text-gray-400 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        <span>+91 6379403553</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        <span>Tamil Nadu, India</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-3 dark:text-white">Follow Us</h4>
-                    <div className="flex gap-3">
-                      {socialLinks?.instagram && (
-                        <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
-                          <Instagram className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
-                        </a>
-                      )}
-                      {socialLinks?.facebook && (
-                        <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer">
-                          <Facebook className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
-                        </a>
-                      )}
-                      {socialLinks?.youtube && (
-                        <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer">
-                          <Youtube className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
-                        </a>
-                      )}
-                      {socialLinks?.whatsapp && (
-                        <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer">
-                          <MessageCircle className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
-                        </a>
-                      )}
-                      {!socialLinks?.instagram && !socialLinks?.facebook && !socialLinks?.youtube && !socialLinks?.whatsapp && (
-                        <>
-                          <Instagram className="w-5 h-5 text-gray-400" />
-                          <Facebook className="w-5 h-5 text-gray-400" />
-                          <Youtube className="w-5 h-5 text-gray-400" />
-                        </>
-                      )}
-                    </div>
-                  </div>
+            <footer className="py-10 mt-8">
+              <div className="max-w-4xl mx-auto text-center">
+                <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-8 mx-auto mb-4" />
+                <div className="flex justify-center gap-6 mb-4">
+                  {socialLinks?.instagram && (
+                    <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-5 h-5 text-gray-400 hover:text-black dark:hover:text-white" />
+                    </a>
+                  )}
+                  {socialLinks?.facebook && (
+                    <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer">
+                      <Facebook className="w-5 h-5 text-gray-400 hover:text-black dark:hover:text-white" />
+                    </a>
+                  )}
+                  {socialLinks?.youtube && (
+                    <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer">
+                      <Youtube className="w-5 h-5 text-gray-400 hover:text-black dark:hover:text-white" />
+                    </a>
+                  )}
+                  {socialLinks?.whatsapp && (
+                    <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="w-5 h-5 text-gray-400 hover:text-black dark:hover:text-white" />
+                    </a>
+                  )}
                 </div>
-                <div className="border-t border-gray-200 dark:border-gray-800 mt-6 pt-4 text-center text-gray-500 text-sm">
-                  <p>&copy; 2026 Trinity Tailoring. All rights reserved.</p>
-                </div>
+                <p className="text-gray-500 dark:text-gray-500 text-xs">&copy; 2026 Trinity Tailoring</p>
               </div>
             </footer>
           </div>
