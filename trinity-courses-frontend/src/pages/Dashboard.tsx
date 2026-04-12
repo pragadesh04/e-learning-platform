@@ -70,6 +70,12 @@ export const Dashboard: React.FC = () => {
             <a href="/registrations" className="p-4 rounded-xl border-2 border-black dark:border-white text-black dark:text-white text-center font-medium hover:shadow-lg transition-all">
               View Registrations
             </a>
+            <a href="/gallery" className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-center font-medium hover:shadow-lg transition-all">
+              Manage Gallery
+            </a>
+            <a href="/testimonials" className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-center font-medium hover:shadow-lg transition-all">
+              Manage Testimonials
+            </a>
             <a href="/settings" className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-center font-medium hover:shadow-lg transition-all">
               Settings
             </a>

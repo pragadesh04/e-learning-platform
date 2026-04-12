@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Users, Settings, LogOut, X } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, Settings, LogOut, X, Image, MessageSquare } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 import { useThemeStore } from '../store/themeStore'
@@ -18,6 +18,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/courses', icon: BookOpen, label: 'Courses' },
+    { to: '/gallery', icon: Image, label: 'Gallery' },
+    { to: '/testimonials', icon: MessageSquare, label: 'Testimonials' },
     { to: '/registrations', icon: Users, label: 'Registrations' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ]

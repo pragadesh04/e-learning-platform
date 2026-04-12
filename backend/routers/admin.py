@@ -63,6 +63,37 @@ async def get_current_user(
     return user
 
 
+@router.post("/admin/change-password")
+async def admin_change_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Change password for admin"""
+    if not current_user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=400, detail="New password must be at least 6 characters"
+        )
+
+    if not bcrypt.checkpw(
+        current_password.encode("utf-8"), current_user["password_hash"].encode("utf-8")
+    ):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    hashed = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+
+    success = await database.update_user(
+        current_user["id"], {"password_hash": hashed.decode("utf-8")}
+    )
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update password")
+
+    return {"message": "Password changed successfully"}
+
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )

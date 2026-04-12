@@ -138,6 +138,21 @@ export const api = {
     return res.json()
   },
 
+  async changePassword(currentPassword: string, newPassword: string) {
+    const formData = new FormData()
+    formData.append('current_password', currentPassword)
+    formData.append('new_password', newPassword)
+    const res = await fetchWithAuth(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to change password' }))
+      throw new Error(err.detail || 'Failed to change password')
+    }
+    return res.json()
+  },
+
   // Courses endpoints (public & user)
   async getCourses() {
     const res = await fetchWithAuth(`${API_BASE}/courses`)
@@ -367,6 +382,71 @@ export const api = {
   async deleteInboxMessage(messageId: string) {
     const res = await fetchWithAuth(`${API_BASE}/inbox/${messageId}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Failed to delete message')
+    return res.json()
+  },
+
+  // Testimonials
+  async getTestimonials() {
+    const res = await fetchWithAuth(`${API_BASE}/testimonials`)
+    if (!res.ok) throw new Error('Failed to fetch testimonials')
+    return res.json()
+  },
+
+// Gallery
+  async getGallery() {
+    const res = await fetchWithAuth(`${API_BASE}/gallery`)
+    if (!res.ok) throw new Error('Failed to fetch gallery')
+    return res.json()
+  },
+
+  // Admin - Gallery CRUD
+  async saveGalleryImage(data: { image_url: string; title?: string; category: string; order?: number }) {
+    const res = await fetchWithAuth(`${API_BASE}/gallery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error('Failed to save gallery image')
+    return res.json()
+  },
+
+  async deleteGalleryImage(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/gallery/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Failed to delete gallery image')
+    return res.json()
+  },
+
+  // Admin - Testimonials CRUD
+  async createTestimonial(data: { name: string; feedback: string; image_url?: string }) {
+    const res = await fetchWithAuth(`${API_BASE}/testimonials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error('Failed to create testimonial')
+    return res.json()
+  },
+
+  async deleteTestimonial(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/testimonials/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Failed to delete testimonial')
+    return res.json()
+  },
+
+  // Social Links
+  async getSocialLinks() {
+    const res = await fetchWithAuth(`${API_BASE}/social-links`)
+    if (!res.ok) throw new Error('Failed to fetch social links')
+    return res.json()
+  },
+
+  async updateSocialLinks(data: { instagram?: string; facebook?: string; youtube?: string; whatsapp?: string }) {
+    const res = await fetchWithAuth(`${API_BASE}/social-links`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error('Failed to update social links')
     return res.json()
   },
 }

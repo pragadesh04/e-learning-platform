@@ -1,16 +1,94 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useThemeStore } from '../store/themeStore'
+import { GlassCard } from '../components/GlassCard'
 import { api } from '../lib/api'
 import { 
   Play, Clock, LogOut, Menu, X, Home, 
   CheckCircle, Clock3, XCircle, Search, Sun, Moon,
-  Video, Sparkles, Compass, FileText, ArrowRight, BookOpen, Bell
+  Video, Sparkles, Compass, FileText, ArrowRight, Bell,
+  ChevronLeft, ChevronRight,
+  Phone, MapPin, Instagram, Facebook, Youtube, MessageCircle
 } from 'lucide-react'
 
 type Tab = 'home' | 'courses' | 'mycourses' | 'registrations'
+
+interface GalleryCarouselProps {
+  images: any[]
+}
+
+const GalleryCarousel: React.FC<GalleryCarouselProps> = ({ images }) => {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const itemsToShow = 3
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => {
+        const maxIndex = Math.max(0, images.length - itemsToShow)
+        return prev >= maxIndex ? 0 : prev + 1
+      })
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [images.length])
+
+  const goToPrev = () => {
+    setCurrentIndex((prev) => {
+      const maxIndex = Math.max(0, images.length - itemsToShow)
+      return prev <= 0 ? maxIndex : prev - 1
+    })
+  }
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => {
+      const maxIndex = Math.max(0, images.length - itemsToShow)
+      return prev >= maxIndex ? 0 : prev + 1
+    })
+  }
+
+  if (images.length === 0) return null
+
+  return (
+    <div className="relative group -mx-4 md:-mx-8">
+      <div className="overflow-hidden">
+        <div 
+          ref={containerRef}
+          className="flex transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${currentIndex * (100 / itemsToShow)}%)` }}
+        >
+          {images.map((img: any) => (
+            <div key={img.id} className="flex-shrink-0 w-1/3">
+              <img 
+                src={img.image} 
+                alt={img.title} 
+                className="w-full h-48 md:h-[60vh] object-contain"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {images.length > itemsToShow && (
+        <>
+          <button 
+            onClick={goToPrev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50 z-10"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={goToNext}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50 z-10"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
 
 export const UserDashboard: React.FC = () => {
   const { user, logout } = useAuth()
@@ -56,11 +134,43 @@ export const UserDashboard: React.FC = () => {
     enabled: activeTab === 'courses' && debouncedQuery.length >= 2
   })
 
+  const { data: testimonials, isLoading: testimonialsLoading } = useQuery({
+    queryKey: ['testimonials'],
+    queryFn: api.getTestimonials,
+  })
+
+  const { data: gallery } = useQuery({
+    queryKey: ['gallery'],
+    queryFn: api.getGallery,
+  })
+
+  const { data: socialLinks } = useQuery({
+    queryKey: ['socialLinks'],
+    queryFn: api.getSocialLinks,
+  })
+
+  const heroBanner = gallery?.hero_banner?.image_url || '/images/hero-banner.jpg'
+  const founderImage = gallery?.founder?.image_url || '/images/founder.jpg'
+  const beforeImage = gallery?.before?.image_url || '/images/before-after/before-1.jpg'
+  const afterImage = gallery?.after?.image_url || '/images/before-after/after-1.jpg'
+  const galleryItems = (gallery?.gallery || []).map((item: any) => ({
+    id: item.id,
+    image: item.image_url,
+    title: item.title || 'Gallery Item',
+    category: item.category
+  }))
+
+  const process = [
+    { title: 'Measuring', icon: '📏' },
+    { title: 'Cutting', icon: '✂️' },
+    { title: 'Stitching', icon: '🧵' },
+    { title: 'Finishing', icon: '✨' },
+  ]
+
   const displayedCourses = debouncedQuery.length >= 2 ? searchResults : allCourses
 
   const handleCourseClick = (courseId: string) => {
     navigate(`/course/${courseId}`)
-    // Don't auto-close sidebar - user can close manually
   }
 
   const handleLogout = () => {
@@ -68,7 +178,7 @@ export const UserDashboard: React.FC = () => {
     navigate('/login')
   }
 
-const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
         return <CheckCircle className="w-4 h-4 text-green-500" />
@@ -122,43 +232,220 @@ const getStatusIcon = (status: string) => {
     switch (activeTab) {
       case 'home':
         return (
-          <>
-            {/* Registered Courses Section */}
-            {registrations && registrations.filter((r: any) => r.status === 'approved').length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-6 h-6 text-green-500" />
-                    <h2 className="text-2xl font-bold dark:text-white">My Courses</h2>
-                  </div>
+          <div>
+            {/* Hero Section */}
+            <section className="relative h-64 md:h-80 flex items-center justify-center overflow-hidden rounded-2xl mb-8">
+              <div className="absolute inset-0">
+                <img src={heroBanner} alt="Hero" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30" />
+              </div>
+              <div className="relative z-10 text-center text-white px-4">
+                <h1 className="text-2xl md:text-4xl font-bold mb-2">Professional Tailoring Courses</h1>
+                <p className="text-lg md:text-xl mb-4">Learn Stitching from Experts</p>
+                <button 
+                  onClick={() => setActiveTab('courses')}
+                  className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black font-medium rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                >
+                  View Courses
+                </button>
+              </div>
+            </section>
+
+            {/* Best Work Showcase - Carousel */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4 dark:text-white">Our Best Work</h2>
+              
+              {galleryItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <p>No gallery images yet.</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {registrations
-                    .filter((reg: any) => reg.status === 'approved')
-                    .map((reg: any) => (
-                      <div
-                        key={reg.id}
-                        onClick={() => handleCourseClick(reg.course_id)}
-                        className="bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="relative">
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-medium rounded-full flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Enrolled
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-semibold dark:text-white line-clamp-2">{reg.course_title}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            Tap to start learning
-                          </p>
-                        </div>
+              ) : (
+                <div className="space-y-6">
+                  {(['frock', 'skirt', 'flower'] as const).map((category) => {
+                    const categoryImages = galleryItems.filter((img: any) => img.category === category)
+                    if (categoryImages.length === 0) return null
+                    return (
+                      <div key={category}>
+                        <h3 className="text-lg font-semibold dark:text-white mb-3 capitalize">
+                          {category === 'frock' ? 'Kids Frocks' : category === 'skirt' ? 'Skirts' : 'Fabric Flowers'}
+                        </h3>
+                        <GalleryCarousel images={categoryImages} />
                       </div>
-                    ))}
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Before/After */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4 dark:text-white">Transformation</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                  <p className="text-center text-gray-500 dark:text-gray-400 mb-2 text-sm">Before</p>
+                  <img src={beforeImage} alt="Before" className="w-full h-48 object-cover rounded-xl" />
+                </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                  <p className="text-center text-gray-500 dark:text-gray-400 mb-2 text-sm">After</p>
+                  <img src={afterImage} alt="After" className="w-full h-48 object-cover rounded-xl" />
                 </div>
               </div>
-            )}
+            </section>
 
+            {/* Happy Customers */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4 dark:text-white">Happy Customers</h2>
+              {testimonialsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                          <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : testimonials && testimonials.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  {testimonials.map((customer: any) => (
+                    <div key={customer.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <img 
+                          src={customer.image_url || '/images/customers/customer-1.jpg'} 
+                          alt={customer.name} 
+                          className="w-14 h-14 rounded-full object-cover" 
+                        />
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-300 mb-1 text-sm">"{customer.feedback}"</p>
+                          <p className="font-medium dark:text-white">- {customer.name}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 dark:text-gray-400">No testimonials yet</p>
+              )}
+            </section>
+
+            {/* Founder */}
+            <section className="mb-8">
+              <div className="max-w-4xl mx-auto text-center">
+                <h2 className="text-2xl font-bold mb-4 dark:text-white">Meet Our Founder</h2>
+                <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                  <div className="flex flex-col md:flex-row items-center gap-4">
+                    <img src={founderImage} alt="Founder" className="w-24 h-24 rounded-full object-cover" />
+                    <div className="text-center md:text-left">
+                      <h3 className="text-xl font-bold dark:text-white">Trinity</h3>
+                      <p className="text-gray-600 dark:text-gray-400">Founder, Trinity Tailoring</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Process */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4 dark:text-white">Our Process</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {process.map((step, idx) => (
+                  <div key={idx} className="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
+                    <div className="text-4xl mb-2">{step.icon}</div>
+                    <h3 className="font-medium dark:text-white">{step.title}</h3>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            
+
+            {/* View All Courses CTA */}
+            <div className="text-center">
+              <button
+                onClick={() => setActiveTab('courses')}
+                className="btn-secondary inline-flex items-center gap-2"
+              >
+                <Compass className="w-5 h-5" />
+                Browse All Courses
+              </button>
+            </div>
+
+            {/* Footer */}
+            <footer className="py-8 mt-8">
+              <div className="max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div>
+                    <img src={isDark ? '/trinity-logo-dark.png' : '/trinity-logo-light.png'} alt="Trinity" className="h-10 mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Professional Tailoring Courses</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-3 dark:text-white">Quick Links</h4>
+                    <div className="space-y-2">
+                      <button onClick={() => setActiveTab('home')} className="block text-gray-500 hover:text-black dark:hover:text-white text-sm">Home</button>
+                      <button onClick={() => setActiveTab('courses')} className="block text-gray-500 hover:text-black dark:hover:text-white text-sm">Courses</button>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-3 dark:text-white">Contact</h4>
+                    <div className="space-y-2 text-gray-500 dark:text-gray-400 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <span>+91 6379403553</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>Tamil Nadu, India</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-3 dark:text-white">Follow Us</h4>
+                    <div className="flex gap-3">
+                      {socialLinks?.instagram && (
+                        <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
+                          <Instagram className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
+                        </a>
+                      )}
+                      {socialLinks?.facebook && (
+                        <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer">
+                          <Facebook className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
+                        </a>
+                      )}
+                      {socialLinks?.youtube && (
+                        <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer">
+                          <Youtube className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
+                        </a>
+                      )}
+                      {socialLinks?.whatsapp && (
+                        <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="w-5 h-5 cursor-pointer hover:text-black dark:text-gray-400" />
+                        </a>
+                      )}
+                      {!socialLinks?.instagram && !socialLinks?.facebook && !socialLinks?.youtube && !socialLinks?.whatsapp && (
+                        <>
+                          <Instagram className="w-5 h-5 text-gray-400" />
+                          <Facebook className="w-5 h-5 text-gray-400" />
+                          <Youtube className="w-5 h-5 text-gray-400" />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-800 mt-6 pt-4 text-center text-gray-500 text-sm">
+                  <p>&copy; 2026 Trinity Tailoring. All rights reserved.</p>
+                </div>
+              </div>
+            </footer>
+          </div>
+        )
+
+      case 'courses':
+        return (
+          <>
             {/* Recommendations Section */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -168,12 +455,6 @@ const getStatusIcon = (status: string) => {
                     {recommendations?.type === 'ai_recommendations' ? 'Recommended for You' : 'Popular Courses'}
                   </h2>
                 </div>
-                <button
-                  onClick={() => setActiveTab('courses')}
-                  className="flex items-center gap-1 text-black dark:text-white hover:underline text-sm font-medium"
-                >
-                  View All <ArrowRight className="w-4 h-4" />
-                </button>
               </div>
               
               {recommendations?.courses?.length > 0 ? (
@@ -197,16 +478,16 @@ const getStatusIcon = (status: string) => {
                             className="w-full h-32 object-cover"
                           />
                           <div className="absolute top-2 right-2">
-<span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                               course.registration_open 
                                 ? 'bg-green-500 text-white' 
                                 : 'bg-red-500 text-white'
                             }`}>
-                            {course.registration_open ? 'Open' : 'Closed'}
-                          </span>
+                              {course.registration_open ? 'Open' : 'Closed'}
+                            </span>
                           </div>
                           {isAlreadyRegistered && (
-<div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" />
                               Enrolled
                             </div>
@@ -237,30 +518,15 @@ const getStatusIcon = (status: string) => {
               )}
             </div>
 
-            {/* View All Courses CTA */}
-            <div className="text-center">
-              <button
-                onClick={() => setActiveTab('courses')}
-                className="btn-secondary inline-flex items-center gap-2"
-              >
-                <Compass className="w-5 h-5" />
-                Browse All Courses
-              </button>
-            </div>
-          </>
-        )
-
-      case 'courses':
-        return (
-          <>
+            {/* All Courses */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Compass className="w-6 h-6 text-black dark:text-white" />
-                <h2 className="text-2xl font-bold dark:text-white">Browse Courses</h2>
+                <h2 className="text-2xl font-bold dark:text-white">All Courses</h2>
               </div>
             </div>
 
-              {debouncedQuery.length >= 2 ? searchLoading : allCoursesLoading ? (
+            {debouncedQuery.length >= 2 ? searchLoading : allCoursesLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="skeleton h-48 rounded-xl" />
@@ -364,11 +630,11 @@ const getStatusIcon = (status: string) => {
                           {course.videos.length} videos
                         </span>
                       )}
-<span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
-                          course.course_type === 'live' 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-gray-500 text-white'
-                        }`}>
+                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
+                        course.course_type === 'live' 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-gray-500 text-white'
+                      }`}>
                         {course.course_type === 'live' ? 'Live' : 'Recorded'}
                       </span>
                     </div>

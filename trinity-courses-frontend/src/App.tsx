@@ -6,6 +6,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Courses } from './pages/Courses'
 import { Registrations } from './pages/Registrations'
 import { Settings } from './pages/Settings'
+import { Gallery } from './pages/Gallery'
+import { Testimonials } from './pages/Testimonials'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { ForgotPassword } from './pages/ForgotPassword'
@@ -99,6 +101,8 @@ const MainLayout: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/testimonials" element={<Testimonials />} />
             <Route path="/registrations" element={<Registrations />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
